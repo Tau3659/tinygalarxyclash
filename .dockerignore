@@ -1,0 +1,25 @@
+# 忽略不需要打包的文件
+node_modules
+npm-debug.log
+.git
+.gitignore
+.vscode
+.kiro
+
+# 测试文件
+test*.html
+debug*.html
+simple_test.html
+quick_test.html
+local_test.html
+local_test.js
+game_status_check.js
+
+# 文档文件（可选，如果想包含就删除这些行）
+*.md
+!README.md
+
+# 临时文件
+*.log
+*.tmp
+.DS_Store
