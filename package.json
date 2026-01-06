@@ -6,6 +6,8 @@
   "scripts": {
     "start": "node simple_server.js",
     "dev": "nodemon simple_server.js",
+    "local": "node local_server.js",
+    "local-dev": "nodemon local_server.js",
     "test": "node local_test.js",
     "deploy": "node simple_server.js"
   },

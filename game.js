@@ -5,13 +5,11 @@ const GameConfig = {
         '2v2': { players: 4, teams: 2 },
         'ffa': { players: 3, teams: 3 }
     },
-    colors: ['#00ff00', '#0099ff', '#ff6600', '#ff0099', '#9900ff', '#ffff00'],
+    colors: ['#00ff00', '#0099ff', '#ff0000', '#ffff00'],
     droneColors: {
         '#00ff00': '#00ff00',
         '#0099ff': '#0099ff', 
-        '#ff6600': '#ff6600',
-        '#ff0099': '#ff0099',
-        '#9900ff': '#9900ff',
+        '#ff0000': '#ff0000',
         '#ffff00': '#ffff00'
     },
     // AI 难度配置
@@ -215,12 +213,28 @@ class DroneGame {
         const colorButtons = document.querySelectorAll('.color-btn');
         const startButton = document.getElementById('startGame');
         
+        // 初始化选择状态
+        this.selectedMode = null;
+        this.selectedDifficulty = null;
+        
+        // 检查是否可以开始游戏
+        const checkCanStart = () => {
+            if (this.selectedMode && this.selectedDifficulty && startButton) {
+                startButton.disabled = false;
+            } else if (startButton) {
+                startButton.disabled = true;
+            }
+        };
+        
         // 游戏模式选择
         modeButtons.forEach(btn => {
             btn.addEventListener('click', (e) => {
                 modeButtons.forEach(b => b.style.background = 'linear-gradient(45deg, #2196F3, #21CBF3)');
                 e.target.style.background = 'linear-gradient(45deg, #4CAF50, #45a049)';
                 this.gameMode = e.target.dataset.mode;
+                this.selectedMode = e.target.dataset.mode;
+                console.log('选择游戏模式:', this.selectedMode);
+                checkCanStart();
             });
         });
         
@@ -234,23 +248,46 @@ class DroneGame {
                 e.target.classList.add('selected');
                 e.target.style.background = 'linear-gradient(45deg, #FF9800, #F57C00)';
                 this.aiDifficulty = e.target.dataset.difficulty;
+                this.selectedDifficulty = e.target.dataset.difficulty;
+                console.log('选择AI难度:', this.selectedDifficulty);
+                checkCanStart();
             });
         });
         
         // 颜色选择
         colorButtons.forEach(btn => {
             btn.addEventListener('click', (e) => {
-                colorButtons.forEach(b => b.classList.remove('selected'));
+                colorButtons.forEach(b => {
+                    b.classList.remove('selected');
+                    b.style.boxShadow = ''; // 清除发光效果
+                });
                 e.target.classList.add('selected');
-                this.playerColor = e.target.dataset.color;
+                
+                // 设置与选中颜色一致的发光效果
+                const selectedColor = e.target.dataset.color;
+                e.target.style.boxShadow = `0 0 20px ${selectedColor}`;
+                
+                this.playerColor = selectedColor;
             });
         });
         
         // 开始按钮 - 添加空值检查，避免在测试环境中报错
         if (startButton) {
             startButton.addEventListener('click', () => {
-                this.startGame();
+                if (!startButton.disabled) {
+                    this.startGame();
+                }
             });
+        }
+        
+        // 初始检查
+        checkCanStart();
+        
+        // 设置默认选中颜色的发光效果
+        const defaultSelectedBtn = document.querySelector('.color-btn.selected');
+        if (defaultSelectedBtn) {
+            const defaultColor = defaultSelectedBtn.dataset.color;
+            defaultSelectedBtn.style.boxShadow = `0 0 20px ${defaultColor}`;
         }
     }
     
@@ -263,6 +300,15 @@ class DroneGame {
         const uiElement = document.getElementById('ui');
         uiElement.style.display = 'flex';
         uiElement.classList.add('game-active');
+        
+        // 降低背景音乐音量（游戏开始后保持播放但音量降低）
+        console.log('游戏开始，尝试降低背景音乐音量');
+        if (window.audioManager) {
+            console.log('找到audioManager，降低背景音乐音量');
+            window.audioManager.lowerBgMusicForGame();
+        } else {
+            console.log('未找到audioManager');
+        }
         
         // 设置画布充满整个窗口
         this.setFullscreenCanvas();
@@ -467,7 +513,15 @@ class DroneGame {
         }
         
         const isPlayer = index === 0;
-        const color = isPlayer ? this.playerColor : GameConfig.colors[index % GameConfig.colors.length];
+        let color;
+        
+        if (isPlayer) {
+            color = this.playerColor;
+        } else {
+            // AI使用玩家未选择的颜色
+            const availableColors = GameConfig.colors.filter(c => c !== this.playerColor);
+            color = availableColors[(index - 1) % availableColors.length];
+        }
         
         return {
             id: index,
@@ -838,10 +892,22 @@ class DroneGame {
     
     upgradeAttribute(attribute) {
         const player = this.players[0];
-        if (player.resources <= 0) return;
         if (player.upgrades[attribute] >= 10) return;
         
-        player.resources--;
+        // 检查基地是否已被摧毁（仅在2v2模式下限制升级）
+        if (player.base.health <= 0 && this.gameMode === '2v2') {
+            console.log('基地已被摧毁，无法升级');
+            return;
+        }
+        
+        // 计算升级所需资源
+        const requiredResources = this.getUpgradeCost(attribute, player.upgrades[attribute]);
+        
+        // 检查资源是否足够
+        if (player.resources < requiredResources) return;
+        
+        // 消耗资源并升级
+        player.resources -= requiredResources;
         player.upgrades[attribute]++;
         
         // 如果是基地血量升级，直接应用到基地
@@ -852,7 +918,25 @@ class DroneGame {
             player.base.health += increment;
         }
         
+        console.log(`${attribute}升级到${player.upgrades[attribute]}级，消耗${requiredResources}点资源，剩余${player.resources}点`);
         this.updateUI();
+    }
+    
+    // 计算升级所需资源
+    getUpgradeCost(attribute, currentLevel) {
+        if (attribute === 'baseHealth') {
+            // 基地升级固定消耗10点资源
+            return 10;
+        } else {
+            // 无人机属性升级：阶梯式消耗
+            if (currentLevel < 4) {
+                return 1; // 0-3级：1点
+            } else if (currentLevel < 7) {
+                return 2; // 4-6级：2点
+            } else {
+                return 3; // 7-9级：3点
+            }
+        }
     }
     
     returnToWelcome() {
@@ -875,6 +959,11 @@ class DroneGame {
         // 显示欢迎界面，隐藏游戏界面
         document.getElementById('welcomeScreen').style.display = 'flex';
         document.getElementById('gameCanvas').style.display = 'none';
+        
+        // 恢复背景音乐正常音量
+        if (window.audioManager) {
+            window.audioManager.restoreBgMusicVolume();
+        }
         
         console.log('返回到开始页面');
     }
@@ -974,8 +1063,13 @@ class DroneGame {
         const enemies = [];
         this.players.forEach(otherPlayer => {
             if (otherPlayer.team !== player.team) {
+                // 添加所有敌方无人机（血量检查在具体使用时进行）
                 enemies.push(...otherPlayer.drones);
-                enemies.push(otherPlayer.base);
+                
+                // 只添加血量大于0的敌方基地
+                if (otherPlayer.base.health > 0) {
+                    enemies.push(otherPlayer.base);
+                }
             }
         });
         return enemies;
@@ -1422,30 +1516,134 @@ class DroneGame {
         return this.players.find(p => p.team === player.team && p.id !== player.id);
     }
     
-    // 2v2协同AI决策
+    // 2v2协同AI决策 - 增强版
     makeTeamAIDecision(aiPlayer, teamMate, difficulty, enemies, baseHealthPercent) {
         const humanPlayer = teamMate.isHuman ? teamMate : null;
         const aiBaseHealth = aiPlayer.base.health / aiPlayer.base.maxHealth;
         const teamMateBaseHealth = teamMate.base.health / teamMate.base.maxHealth;
         
-        // 紧急情况：队友基地受到严重威胁
+        // 检查是否有队友基地正在受到攻击
+        const teamMateUnderAttack = this.isBaseUnderAttack(teamMate);
+        const selfUnderAttack = this.isBaseUnderAttack(aiPlayer);
+        
+        // 优先级1：队友基地受到攻击，立即支援
+        if (teamMateUnderAttack) {
+            this.executeEmergencyDefense(aiPlayer, teamMate, enemies);
+            return;
+        }
+        
+        // 优先级2：自己基地受到攻击，呼叫队友支援
+        if (selfUnderAttack) {
+            this.executeDefendSelfWithTeamSupport(aiPlayer, teamMate, enemies);
+            return;
+        }
+        
+        // 优先级3：队友基地血量危险
         if (teamMateBaseHealth < 0.3) {
             this.executeDefendTeamMate(aiPlayer, teamMate);
             return;
         }
         
-        // 自己基地受到威胁
+        // 优先级4：自己基地血量危险
         if (aiBaseHealth < 0.4) {
             this.executeDefendSelf(aiPlayer, teamMate);
             return;
         }
         
-        // 协同进攻逻辑
+        // 优先级5：协同进攻
         if (humanPlayer) {
             this.executeCooperateWithHuman(aiPlayer, humanPlayer, enemies, difficulty);
         } else {
             this.executeAITeamwork(aiPlayer, teamMate, enemies, difficulty);
         }
+    }
+    
+    // 检查基地是否正在受到攻击
+    isBaseUnderAttack(player) {
+        const basePosition = player.base;
+        const attackRange = 300; // 攻击范围
+        
+        // 检查是否有敌方无人机在基地附近
+        for (let otherPlayer of this.players) {
+            if (otherPlayer.team !== player.team) {
+                for (let drone of otherPlayer.drones) {
+                    if (drone.health > 0) {
+                        const distance = Math.sqrt(
+                            (drone.x - basePosition.x) ** 2 + 
+                            (drone.y - basePosition.y) ** 2
+                        );
+                        if (distance < attackRange) {
+                            return true;
+                        }
+                    }
+                }
+            }
+        }
+        return false;
+    }
+    
+    // 紧急防御：队友基地受攻击
+    executeEmergencyDefense(aiPlayer, teamMate, enemies) {
+        // 找到攻击队友基地的敌人
+        const attackers = [];
+        const basePosition = teamMate.base;
+        
+        for (let enemy of enemies) {
+            if (enemy.health > 0) {
+                const distance = Math.sqrt(
+                    (enemy.x - basePosition.x) ** 2 + 
+                    (enemy.y - basePosition.y) ** 2
+                );
+                if (distance < 300) {
+                    attackers.push(enemy);
+                }
+            }
+        }
+        
+        if (attackers.length > 0) {
+            // 选择最近的攻击者作为目标
+            const closestAttacker = attackers.reduce((closest, current) => {
+                const distToCurrent = Math.sqrt(
+                    (current.x - aiPlayer.base.x) ** 2 + 
+                    (current.y - aiPlayer.base.y) ** 2
+                );
+                const distToClosest = Math.sqrt(
+                    (closest.x - aiPlayer.base.x) ** 2 + 
+                    (closest.y - aiPlayer.base.y) ** 2
+                );
+                return distToCurrent < distToClosest ? current : closest;
+            });
+            
+            aiPlayer.rallyPoint = { x: closestAttacker.x, y: closestAttacker.y };
+            console.log(`AI ${aiPlayer.id} 紧急支援队友 ${teamMate.id}，攻击入侵者`);
+        } else {
+            // 没有找到具体攻击者，移动到队友基地附近防守
+            this.executeDefendTeamMate(aiPlayer, teamMate);
+        }
+    }
+    
+    // 防守自己并请求队友支援
+    executeDefendSelfWithTeamSupport(aiPlayer, teamMate, enemies) {
+        // 在自己基地附近防守
+        const angle = Math.random() * Math.PI * 2;
+        const radius = 80 + Math.random() * 40;
+        aiPlayer.rallyPoint = {
+            x: aiPlayer.base.x + Math.cos(angle) * radius,
+            y: aiPlayer.base.y + Math.sin(angle) * radius
+        };
+        
+        // 如果队友是AI，让队友也来支援
+        if (!teamMate.isHuman && teamMate.base.health > 0) {
+            const supportAngle = angle + Math.PI; // 相对位置
+            const supportRadius = 120;
+            teamMate.rallyPoint = {
+                x: aiPlayer.base.x + Math.cos(supportAngle) * supportRadius,
+                y: aiPlayer.base.y + Math.sin(supportAngle) * supportRadius
+            };
+            console.log(`AI ${teamMate.id} 支援队友 ${aiPlayer.id} 防守`);
+        }
+        
+        console.log(`AI ${aiPlayer.id} 防守基地，请求队友支援`);
     }
     
     // 保护队友
@@ -1473,7 +1671,7 @@ class DroneGame {
         console.log(`AI ${aiPlayer.id} 防守中，等待队友支援`);
     }
     
-    // 与人类玩家协同
+    // 与人类玩家协同 - 增强版
     executeCooperateWithHuman(aiPlayer, humanPlayer, enemies, difficulty) {
         // 分析人类玩家的意图
         const humanRally = humanPlayer.rallyPoint;
@@ -1489,6 +1687,7 @@ class DroneGame {
             
             // 判断人类是否在进攻
             const isHumanAttacking = enemies.some(enemy => {
+                if (enemy.health <= 0) return false;
                 const distToEnemy = Math.sqrt(
                     (humanRally.x - enemy.x) ** 2 + 
                     (humanRally.y - enemy.y) ** 2
@@ -1503,18 +1702,72 @@ class DroneGame {
                 // 人类在附近，提供支援
                 this.executeCloseSupport(aiPlayer, humanRally);
             } else {
-                // 人类在远处，执行独立任务
-                this.executeIndependentTask(aiPlayer, enemies);
+                // 人类在远处，执行独立巡逻或收集资源
+                this.executeIndependentAction(aiPlayer, enemies);
             }
         } else {
-            // 人类没有明确指令，AI主动寻找机会
-            if (aiDroneCount > humanDroneCount * 0.8) {
-                // AI兵力充足，主动进攻
-                this.executeProactiveAttack(aiPlayer, enemies);
-            } else {
-                // 收集资源或防守
-                this.executeResourceGathering(aiPlayer);
+            // 人类没有明确集结点，AI主动寻找目标
+            this.executeProactiveAttack(aiPlayer, enemies);
+        }
+    }
+    
+    // 支援攻击
+    executeSupportAttack(aiPlayer, humanRally, enemies) {
+        // 找到人类攻击的目标
+        let targetEnemy = null;
+        let minDistance = Infinity;
+        
+        for (let enemy of enemies) {
+            if (enemy.health <= 0) continue;
+            const distToRally = Math.sqrt(
+                (humanRally.x - enemy.x) ** 2 + 
+                (humanRally.y - enemy.y) ** 2
+            );
+            if (distToRally < minDistance) {
+                minDistance = distToRally;
+                targetEnemy = enemy;
             }
+        }
+        
+        if (targetEnemy) {
+            // 选择侧翼攻击位置
+            const angle = Math.atan2(targetEnemy.y - humanRally.y, targetEnemy.x - humanRally.x);
+            const flankAngle = angle + Math.PI / 2; // 90度侧翼
+            const flankDistance = 100;
+            
+            aiPlayer.rallyPoint = {
+                x: targetEnemy.x + Math.cos(flankAngle) * flankDistance,
+                y: targetEnemy.y + Math.sin(flankAngle) * flankDistance
+            };
+            console.log(`AI ${aiPlayer.id} 侧翼支援人类玩家攻击`);
+        } else {
+            // 没有找到目标，直接支援人类位置
+            this.executeCloseSupport(aiPlayer, humanRally);
+        }
+    }
+    
+    // 近距离支援
+    executeCloseSupport(aiPlayer, humanRally) {
+        // 在人类集结点附近选择支援位置
+        const angle = Math.random() * Math.PI * 2;
+        const radius = 80 + Math.random() * 40;
+        
+        aiPlayer.rallyPoint = {
+            x: humanRally.x + Math.cos(angle) * radius,
+            y: humanRally.y + Math.sin(angle) * radius
+        };
+        console.log(`AI ${aiPlayer.id} 近距离支援人类玩家`);
+    }
+    
+    // 独立行动
+    executeIndependentAction(aiPlayer, enemies) {
+        // 寻找最近的敌人或资源
+        if (Math.random() < 0.7) {
+            // 70%概率攻击敌人
+            this.executeProactiveAttack(aiPlayer, enemies);
+        } else {
+            // 30%概率收集资源
+            this.executeResourceGathering(aiPlayer);
         }
     }
     
@@ -1615,16 +1868,125 @@ class DroneGame {
         }
     }
     
-    // AI之间的协同（两个AI队友）
+    // AI之间的协同（两个AI队友）- 增强版
     executeAITeamwork(aiPlayer, aiTeamMate, enemies, difficulty) {
-        // 简单的分工：一个进攻，一个收集资源
-        const shouldAttack = aiPlayer.id % 2 === 0; // 偶数ID进攻，奇数ID收集资源
+        const aiPlayerHealth = aiPlayer.base.health / aiPlayer.base.maxHealth;
+        const aiTeamMateHealth = aiTeamMate.base.health / aiTeamMate.base.maxHealth;
+        const aiPlayerDrones = aiPlayer.drones.filter(d => d.health > 0).length;
+        const aiTeamMateDrones = aiTeamMate.drones.filter(d => d.health > 0).length;
         
-        if (shouldAttack) {
-            this.executeProactiveAttack(aiPlayer, enemies);
-        } else {
-            this.executeResourceGathering(aiPlayer);
+        // 检查是否有队友正在受到攻击
+        const teamMateUnderAttack = this.isBaseUnderAttack(aiTeamMate);
+        
+        if (teamMateUnderAttack) {
+            // 队友受攻击，立即支援
+            this.executeEmergencyDefense(aiPlayer, aiTeamMate, enemies);
+            return;
         }
+        
+        // 智能分工策略
+        const totalEnemyDrones = enemies.filter(e => e.health > 0 && e.size < 30).length;
+        const totalEnemyBases = enemies.filter(e => e.health > 0 && e.size >= 30).length;
+        
+        // 根据实力对比决定策略
+        const ourTotalDrones = aiPlayerDrones + aiTeamMateDrones;
+        const shouldCoordinate = ourTotalDrones >= totalEnemyDrones * 0.8; // 实力相当时协同
+        
+        if (shouldCoordinate && totalEnemyBases > 0) {
+            // 协同攻击：一个攻击基地，一个清理无人机
+            if (aiPlayerDrones >= aiTeamMateDrones) {
+                // 实力强的攻击基地
+                this.executeCoordinatedBaseAttack(aiPlayer, enemies);
+                // 让队友清理无人机或收集资源
+                if (totalEnemyDrones > 0) {
+                    this.executeCoordinatedDroneHunt(aiTeamMate, enemies);
+                } else {
+                    this.executeResourceGathering(aiTeamMate);
+                }
+            } else {
+                // 队友实力强，让队友攻击基地
+                this.executeCoordinatedBaseAttack(aiTeamMate, enemies);
+                // 自己清理无人机或收集资源
+                if (totalEnemyDrones > 0) {
+                    this.executeCoordinatedDroneHunt(aiPlayer, enemies);
+                } else {
+                    this.executeResourceGathering(aiPlayer);
+                }
+            }
+        } else {
+            // 实力不足时，采用保守策略
+            if (aiPlayerHealth < 0.6 || aiTeamMateHealth < 0.6) {
+                // 有基地受损，采用防守反击
+                this.executeDefensiveCounterAttack(aiPlayer, aiTeamMate, enemies);
+            } else {
+                // 基地健康，分工合作
+                const shouldAttack = aiPlayer.id % 2 === 0;
+                if (shouldAttack) {
+                    this.executeProactiveAttack(aiPlayer, enemies);
+                } else {
+                    this.executeResourceGathering(aiPlayer);
+                }
+            }
+        }
+    }
+    
+    // 协同攻击敌方基地
+    executeCoordinatedBaseAttack(aiPlayer, enemies) {
+        const enemyBases = enemies.filter(e => e.health > 0 && e.size >= 30);
+        if (enemyBases.length > 0) {
+            // 选择血量最低的基地作为目标
+            const targetBase = enemyBases.reduce((weakest, current) => 
+                current.health < weakest.health ? current : weakest
+            );
+            
+            aiPlayer.rallyPoint = { x: targetBase.x, y: targetBase.y };
+            console.log(`AI ${aiPlayer.id} 协同攻击敌方基地`);
+        }
+    }
+    
+    // 协同清理敌方无人机
+    executeCoordinatedDroneHunt(aiPlayer, enemies) {
+        const enemyDrones = enemies.filter(e => e.health > 0 && e.size < 30);
+        if (enemyDrones.length > 0) {
+            // 选择最近的敌方无人机
+            let closestDrone = null;
+            let minDistance = Infinity;
+            
+            for (let drone of enemyDrones) {
+                const distance = Math.sqrt(
+                    (drone.x - aiPlayer.base.x) ** 2 + 
+                    (drone.y - aiPlayer.base.y) ** 2
+                );
+                if (distance < minDistance) {
+                    minDistance = distance;
+                    closestDrone = drone;
+                }
+            }
+            
+            if (closestDrone) {
+                aiPlayer.rallyPoint = { x: closestDrone.x, y: closestDrone.y };
+                console.log(`AI ${aiPlayer.id} 协同清理敌方无人机`);
+            }
+        }
+    }
+    
+    // 防守反击
+    executeDefensiveCounterAttack(aiPlayer, aiTeamMate, enemies) {
+        // 两个AI在各自基地之间建立防线
+        const midX = (aiPlayer.base.x + aiTeamMate.base.x) / 2;
+        const midY = (aiPlayer.base.y + aiTeamMate.base.y) / 2;
+        
+        // 在防线上选择不同的防守位置
+        const angle = Math.atan2(aiTeamMate.base.y - aiPlayer.base.y, aiTeamMate.base.x - aiPlayer.base.x);
+        const perpAngle = angle + Math.PI / 2;
+        const offset = (aiPlayer.id % 2 === 0 ? 1 : -1) * 80;
+        
+        aiPlayer.rallyPoint = {
+            x: midX + Math.cos(perpAngle) * offset,
+            y: midY + Math.sin(perpAngle) * offset
+        };
+        
+        console.log(`AI ${aiPlayer.id} 建立防守阵线`);
     }
     
     // 寻找落单的敌人
@@ -1920,27 +2282,39 @@ class DroneGame {
         // 智能升级优先级
         const upgradePriorities = this.getAIUpgradePriorities(player, difficulty);
         
-        for (let i = 0; i < resourcesToUse && player.resources > 0; i++) {
+        let totalResourcesUsed = 0;
+        
+        while (totalResourcesUsed < resourcesToUse && player.resources > 0) {
             let upgraded = false;
             
             for (const upgrade of upgradePriorities) {
                 if (player.upgrades[upgrade] < 10) {
-                    player.resources--;
-                    player.upgrades[upgrade]++;
+                    // 计算升级所需资源
+                    const requiredResources = this.getUpgradeCost(upgrade, player.upgrades[upgrade]);
                     
-                    if (upgrade === 'baseHealth') {
-                        const currentLevel = player.upgrades[upgrade];
-                        const increment = currentLevel <= 4 ? 100 : 50;
-                        player.base.maxHealth += increment;
-                        player.base.health += increment;
+                    // 检查是否有足够资源且不超过预算
+                    if (player.resources >= requiredResources && 
+                        totalResourcesUsed + requiredResources <= resourcesToUse) {
+                        
+                        // 执行升级
+                        player.resources -= requiredResources;
+                        totalResourcesUsed += requiredResources;
+                        player.upgrades[upgrade]++;
+                        
+                        if (upgrade === 'baseHealth') {
+                            const currentLevel = player.upgrades[upgrade];
+                            const increment = currentLevel <= 4 ? 100 : 50;
+                            player.base.maxHealth += increment;
+                            player.base.health += increment;
+                        }
+                        
+                        upgraded = true;
+                        break;
                     }
-                    
-                    upgraded = true;
-                    break;
                 }
             }
             
-            if (!upgraded) break; // 所有升级都满级了
+            if (!upgraded) break; // 没有可升级的项目或资源不足
         }
     }
     
@@ -2012,9 +2386,20 @@ class DroneGame {
     checkGameEnd() {
         const aliveTeams = new Set();
         
+        // 检查每个团队是否还有基地存活
         this.players.forEach(player => {
-            if (player.base.health > 0) {
-                aliveTeams.add(player.team);
+            const hasAliveBase = player.base.health > 0;
+            
+            if (this.gameMode === '2v2') {
+                // 2v2模式：只基于基地存活判断，团队所有基地被摧毁即失败
+                if (hasAliveBase) {
+                    aliveTeams.add(player.team);
+                }
+            } else {
+                // 1v1和混战模式：只基于基地存活判断
+                if (hasAliveBase) {
+                    aliveTeams.add(player.team);
+                }
             }
         });
         
@@ -2417,7 +2802,10 @@ class DroneGame {
         
         // 绘制基地
         for (let i = 0; i < this.players.length; i++) {
-            this.players[i].base.render(this.ctx);
+            const player = this.players[i];
+            const playerTeam = this.players[0].team; // 玩家的team
+            const isPlayerTeam = player.team === playerTeam;
+            player.base.render(this.ctx, isPlayerTeam);
         }
         
         // 按颜色分组绘制无人机，减少状态切换
@@ -2591,13 +2979,39 @@ class DroneGame {
         document.getElementById('healthLevel').textContent = upgrades.health;
         document.getElementById('baseLevel').textContent = upgrades.baseHealth;
         
-        // 更新升级按钮状态
-        const hasResources = player.resources > 0;
-        document.getElementById('upgradeAttack').disabled = upgrades.attack >= 10 || !hasResources;
-        document.getElementById('upgradeSpeed').disabled = upgrades.attackSpeed >= 10 || !hasResources;
-        document.getElementById('upgradeMoveSpeed').disabled = upgrades.moveSpeed >= 10 || !hasResources;
-        document.getElementById('upgradeHealth').disabled = upgrades.health >= 10 || !hasResources;
-        document.getElementById('upgradeBase').disabled = upgrades.baseHealth >= 10 || !hasResources;
+        // 更新升级按钮状态（根据新的资源消耗规则）
+        this.updateUpgradeButtonState('upgradeAttack', 'attack', player);
+        this.updateUpgradeButtonState('upgradeSpeed', 'attackSpeed', player);
+        this.updateUpgradeButtonState('upgradeMoveSpeed', 'moveSpeed', player);
+        this.updateUpgradeButtonState('upgradeHealth', 'health', player);
+        this.updateUpgradeButtonState('upgradeBase', 'baseHealth', player);
+    }
+    
+    // 更新单个升级按钮的状态（不显示资源数量）
+    updateUpgradeButtonState(buttonId, attribute, player) {
+        const button = document.getElementById(buttonId);
+        if (!button) return;
+        
+        const currentLevel = player.upgrades[attribute];
+        const maxLevel = 10;
+        
+        // 检查基地是否已被摧毁（仅在2v2模式下限制升级）
+        const baseDestroyed = player.base.health <= 0 && this.gameMode === '2v2';
+        
+        if (currentLevel >= maxLevel) {
+            // 已达到最大等级
+            button.disabled = true;
+        } else if (baseDestroyed) {
+            // 基地被摧毁且在2v2模式下，禁用所有升级
+            button.disabled = true;
+        } else {
+            // 计算升级所需资源
+            const requiredResources = this.getUpgradeCost(attribute, currentLevel);
+            const hasEnoughResources = player.resources >= requiredResources;
+            
+            // 更新按钮状态
+            button.disabled = !hasEnoughResources;
+        }
     }
 }
 
@@ -2625,12 +3039,9 @@ class Base {
         if (this.health < 0) this.health = 0;
     }
     
-    render(ctx) {
+    render(ctx, isPlayerTeam = false) {
         // 绘制基地 - 确保圆形不变形
-        ctx.fillStyle = this.color;
-        if (this.invulnerable) {
-            ctx.fillStyle = '#ffff00'; // 无敌时显示黄色
-        }
+        ctx.fillStyle = this.color; // 始终使用玩家颜色，不显示无敌状态
         
         // 使用统一半径确保圆形，避免椭圆变形
         const radius = this.size;
@@ -2653,8 +3064,8 @@ class Base {
         ctx.fillStyle = '#333';
         ctx.fillRect(barX, barY, barWidth, barHeight);
         
-        // 血量条前景
-        ctx.fillStyle = '#ff0000';
+        // 血量条前景 - 根据阵营显示不同颜色
+        ctx.fillStyle = isPlayerTeam ? '#00ff00' : '#ff0000'; // 玩家方绿色，敌人红色
         const healthPercent = this.health / this.maxHealth;
         ctx.fillRect(barX, barY, barWidth * healthPercent, barHeight);
         
@@ -3355,7 +3766,20 @@ class Drone {
     }
     
     fireProjectile() {
-        if (!this.target) return;
+        console.log('fireProjectile被调用，target:', this.target);
+        if (!this.target) {
+            console.log('没有目标，取消发射');
+            return;
+        }
+        
+        // 播放射击音效
+        console.log('无人机发射投射物，尝试播放音效');
+        if (window.audioManager) {
+            console.log('找到audioManager，播放射击音效');
+            window.audioManager.playShootSound();
+        } else {
+            console.log('audioManager未找到');
+        }
         
         // 使用对象池获取投射物
         let projectile = game.getProjectileFromPool();

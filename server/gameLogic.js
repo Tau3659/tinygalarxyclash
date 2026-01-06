@@ -304,9 +304,28 @@ class GameLogic {
                 break;
                 
             case 'upgrade':
-                if (player.resources > 0) {
-                    player.resources--;
-                    player.upgrades[action.attribute]++;
+                // 计算升级所需资源
+                const currentLevel = player.upgrades[action.attribute] || 0;
+                let requiredResources;
+                
+                if (action.attribute === 'baseHealth') {
+                    // 基地升级固定消耗10点资源
+                    requiredResources = 10;
+                } else {
+                    // 无人机属性升级：阶梯式消耗
+                    if (currentLevel < 4) {
+                        requiredResources = 1; // 0-3级：1点
+                    } else if (currentLevel < 7) {
+                        requiredResources = 2; // 4-6级：2点
+                    } else {
+                        requiredResources = 3; // 7-9级：3点
+                    }
+                }
+                
+                // 检查资源是否足够且未达到最大等级
+                if (player.resources >= requiredResources && currentLevel < 10) {
+                    player.resources -= requiredResources;
+                    player.upgrades[action.attribute] = currentLevel + 1;
                 }
                 break;
         }

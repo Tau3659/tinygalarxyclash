@@ -7,7 +7,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="format-detection" content="telephone=no">
     <meta name="theme-color" content="#000000">
-    <title>无人机战略游戏</title>
+    <title>Tiny Galaxy Clash</title>
     <style>
         body {
             margin: 0;
@@ -24,7 +24,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background-image: url('assets/images/backgrounds/space_background.jpg');
+            background: #0a0a1a; /* 深色背景，避免白屏 */
             background-size: cover;
             background-position: center;
             background-repeat: no-repeat;
@@ -34,6 +34,326 @@
             align-items: center;
             z-index: 1000;
             overflow: hidden;
+            transition: background-image 0.5s ease-in-out; /* 平滑过渡 */
+        }
+        
+        /* 背景图加载完成后的样式 */
+        #welcomeScreen.bg-loaded {
+            background-image: url('assets/images/backgrounds/space_background.jpg');
+        }
+        
+        /* 加载提示样式 */
+        .loading-hint {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 14px;
+            opacity: 1;
+            transition: opacity 0.5s ease-out;
+        }
+        
+        .loading-hint.hidden {
+            opacity: 0;
+        }
+        
+        /* 设置按钮样式 */
+        .settings-btn {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            width: 50px;
+            height: 50px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            color: white;
+            transition: all 0.3s ease;
+            z-index: 100;
+        }
+        
+        .settings-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+        
+        /* 移动端设置按钮适配 */
+        @media (max-width: 768px) and (hover: none) {
+            .settings-btn {
+                top: 15px;
+                left: 15px;
+                width: 45px;
+                height: 45px;
+                font-size: 20px;
+            }
+            
+            .settings-btn:active {
+                background: rgba(255, 255, 255, 0.3);
+                transform: scale(0.95);
+            }
+        }
+        
+        /* 超小屏幕设置按钮适配 */
+        @media (max-width: 480px) and (hover: none) {
+            .settings-btn {
+                top: 10px;
+                left: 10px;
+                width: 40px;
+                height: 40px;
+                font-size: 18px;
+            }
+        }
+        
+        /* 设置弹窗样式 */
+        .settings-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(5px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+        }
+        
+        .settings-panel {
+            background: linear-gradient(135deg, rgba(20, 20, 40, 0.95), rgba(40, 40, 80, 0.95));
+            backdrop-filter: blur(20px);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+            padding: 30px;
+            width: 400px;
+            max-width: 90vw;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+        }
+        
+        .settings-title {
+            color: white;
+            font-size: 24px;
+            text-align: center;
+            margin-bottom: 30px;
+            font-weight: bold;
+        }
+        
+        .setting-item {
+            margin-bottom: 25px;
+            color: white;
+        }
+        
+        .setting-label {
+            display: block;
+            font-size: 16px;
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+        
+        .setting-controls {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .toggle-switch {
+            position: relative;
+            width: 60px;
+            height: 30px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 15px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .toggle-switch.active {
+            background: #4CAF50;
+        }
+        
+        .toggle-slider {
+            position: absolute;
+            top: 3px;
+            left: 3px;
+            width: 24px;
+            height: 24px;
+            background: white;
+            border-radius: 50%;
+            transition: all 0.3s ease;
+        }
+        
+        .toggle-switch.active .toggle-slider {
+            transform: translateX(30px);
+        }
+        
+        .volume-slider {
+            flex: 1;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 3px;
+            outline: none;
+            cursor: pointer;
+        }
+        
+        .volume-slider::-webkit-slider-thumb {
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            background: #4CAF50;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+        
+        .volume-value {
+            min-width: 40px;
+            text-align: center;
+            font-size: 14px;
+        }
+        
+        /* 移动端设置窗口适配 */
+        @media (max-width: 768px) and (hover: none) {
+            .settings-panel {
+                width: 90vw;
+                max-width: 350px;
+                padding: 20px;
+                border-radius: 15px;
+                margin: 10px;
+            }
+            
+            .settings-title {
+                font-size: 20px;
+                margin-bottom: 20px;
+            }
+            
+            .setting-item {
+                margin-bottom: 20px;
+            }
+            
+            .setting-label {
+                font-size: 15px;
+                margin-bottom: 8px;
+            }
+            
+            .setting-controls {
+                gap: 12px;
+            }
+            
+            .toggle-switch {
+                width: 50px;
+                height: 26px;
+                border-radius: 13px;
+            }
+            
+            .toggle-slider {
+                width: 20px;
+                height: 20px;
+                top: 3px;
+                left: 3px;
+            }
+            
+            .toggle-switch.active .toggle-slider {
+                transform: translateX(24px);
+            }
+            
+            .volume-slider {
+                height: 8px;
+                border-radius: 4px;
+            }
+            
+            .volume-slider::-webkit-slider-thumb {
+                width: 24px;
+                height: 24px;
+            }
+            
+            .volume-value {
+                min-width: 35px;
+                font-size: 13px;
+            }
+            
+            .close-btn {
+                padding: 12px 24px;
+                font-size: 15px;
+                border-radius: 8px;
+                margin-top: 15px;
+            }
+        }
+        
+        /* 超小屏幕适配 */
+        @media (max-width: 480px) and (hover: none) {
+            .settings-panel {
+                width: 95vw;
+                max-width: 320px;
+                padding: 15px;
+            }
+            
+            .settings-title {
+                font-size: 18px;
+                margin-bottom: 15px;
+            }
+            
+            .setting-item {
+                margin-bottom: 15px;
+            }
+            
+            .setting-label {
+                font-size: 14px;
+                margin-bottom: 6px;
+            }
+            
+            .setting-controls {
+                gap: 10px;
+            }
+            
+            .toggle-switch {
+                width: 45px;
+                height: 24px;
+                border-radius: 12px;
+            }
+            
+            .toggle-slider {
+                width: 18px;
+                height: 18px;
+                top: 3px;
+                left: 3px;
+            }
+            
+            .toggle-switch.active .toggle-slider {
+                transform: translateX(21px);
+            }
+            
+            .volume-value {
+                min-width: 30px;
+                font-size: 12px;
+            }
+            
+            .close-btn {
+                padding: 10px 20px;
+                font-size: 14px;
+                margin-top: 10px;
+            }
+        }
+        
+        .close-btn {
+            background: linear-gradient(45deg, #f44336, #d32f2f);
+            border: none;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-top: 20px;
+            width: 100%;
+            transition: all 0.3s ease;
+        }
+        
+        .close-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(244, 67, 54, 0.4);
         }
         
         /* 星星闪烁效果 - 增强光晕 */
@@ -205,8 +525,8 @@
         }
         
         .color-btn.selected {
-            border-color: #ffff00;
-            box-shadow: 0 0 20px #ffff00;
+            border-color: #ffffff;
+            /* 发光颜色将通过JavaScript动态设置 */
         }
         
         .start-btn {
@@ -224,9 +544,17 @@
             position: relative;
         }
         
-        .start-btn:hover {
+        .start-btn:hover:not(:disabled) {
             transform: translateY(-3px);
             box-shadow: 0 6px 20px rgba(76, 175, 80, 0.5);
+        }
+        
+        /* 禁用状态：简单的置灰处理 */
+        .start-btn:disabled {
+            background: linear-gradient(45deg, rgba(128, 128, 128, 0.4), rgba(100, 100, 100, 0.4));
+            color: rgba(255, 255, 255, 0.6);
+            cursor: not-allowed;
+            box-shadow: 0 2px 8px rgba(128, 128, 128, 0.2);
         }
         
         .preview-section {
@@ -1143,9 +1471,14 @@
 <body>
     <!-- 欢迎界面 -->
     <div id="welcomeScreen">
+        <!-- 设置按钮 -->
+        <div class="settings-btn" id="settingsBtn" title="游戏设置">
+            ⚙️
+        </div>
+        
         <div class="stars-container" id="starsContainer"></div>
         <div class="particles" id="particles"></div>
-        <h1 class="welcome-title">无人机战略游戏</h1>
+        <h1 class="welcome-title">Tiny Galaxy Clash</h1>
         
         <div class="mode-selection">
             <button class="mode-btn" data-mode="1v1">1v1 对战</button>
@@ -1158,9 +1491,7 @@
             <div class="color-options">
                 <div class="color-btn selected" data-color="#00ff00" style="background: #00ff00;"></div>
                 <div class="color-btn" data-color="#0099ff" style="background: #0099ff;"></div>
-                <div class="color-btn" data-color="#ff6600" style="background: #ff6600;"></div>
-                <div class="color-btn" data-color="#ff0099" style="background: #ff0099;"></div>
-                <div class="color-btn" data-color="#9900ff" style="background: #9900ff;"></div>
+                <div class="color-btn" data-color="#ff0000" style="background: #ff0000;"></div>
                 <div class="color-btn" data-color="#ffff00" style="background: #ffff00;"></div>
             </div>
         </div>
@@ -1174,13 +1505,56 @@
             </div>
         </div>
         
-        <button class="start-btn" id="startGame">开始游戏</button>
+        <button class="start-btn" id="startGame" disabled>开始游戏</button>
+        
+        <!-- 加载提示 -->
+        <div class="loading-hint" id="loadingHint">正在加载游戏资源...</div>
         
         <!-- 预览按钮 -->
         <div class="preview-section">
             <button class="preview-btn" id="previewAssets">🎨 预览游戏素材</button>
         </div>
     </div>
+    
+    <!-- 设置弹窗 -->
+    <div class="settings-modal" id="settingsModal">
+        <div class="settings-panel">
+            <h2 class="settings-title">🎵 游戏设置</h2>
+            
+            <div class="setting-item">
+                <label class="setting-label">🎵 背景音乐</label>
+                <div class="setting-controls">
+                    <div class="toggle-switch active" id="bgMusicToggle">
+                        <div class="toggle-slider"></div>
+                    </div>
+                    <input type="range" class="volume-slider" id="bgMusicVolume" min="0" max="100" value="50">
+                    <span class="volume-value" id="bgMusicValue">50%</span>
+                </div>
+            </div>
+            
+            <div class="setting-item">
+                <label class="setting-label">🔫 游戏音效</label>
+                <div class="setting-controls">
+                    <div class="toggle-switch active" id="soundEffectToggle">
+                        <div class="toggle-slider"></div>
+                    </div>
+                    <input type="range" class="volume-slider" id="soundEffectVolume" min="0" max="100" value="70">
+                    <span class="volume-value" id="soundEffectValue">70%</span>
+                </div>
+            </div>
+            
+            <button class="close-btn" id="closeSettings">关闭设置</button>
+        </div>
+    </div>
+    
+    <!-- 音频元素 -->
+    <audio id="bgMusic" loop preload="auto" src="assets/audio/background.mp3">
+        您的浏览器不支持音频播放
+    </audio>
+    
+    <audio id="shootSound" preload="auto" src="assets/audio/shoot.mp3">
+        您的浏览器不支持音频播放
+    </audio>
     
     <!-- 游戏界面 -->
     <canvas id="gameCanvas" width="1200" height="800"></canvas>
@@ -1235,6 +1609,603 @@
     <!-- 移除独立的gameInfo，已合并到ui中 -->
     
     <script>
+        // 背景图预加载优化
+        function preloadBackgroundImage() {
+            const img = new Image();
+            const welcomeScreen = document.getElementById('welcomeScreen');
+            const loadingHint = document.getElementById('loadingHint');
+            
+            img.onload = function() {
+                // 图片加载完成后添加背景
+                welcomeScreen.classList.add('bg-loaded');
+                // 隐藏加载提示
+                if (loadingHint) {
+                    loadingHint.classList.add('hidden');
+                    setTimeout(() => {
+                        loadingHint.style.display = 'none';
+                    }, 500);
+                }
+            };
+            
+            img.onerror = function() {
+                // 如果图片加载失败，使用渐变背景
+                welcomeScreen.style.background = 'linear-gradient(135deg, #0a0a1a 0%, #1a1a2e 50%, #16213e 100%)';
+                // 隐藏加载提示
+                if (loadingHint) {
+                    loadingHint.textContent = '使用默认背景';
+                    setTimeout(() => {
+                        loadingHint.classList.add('hidden');
+                        setTimeout(() => {
+                            loadingHint.style.display = 'none';
+                        }, 500);
+                    }, 1000);
+                }
+            };
+            
+            // 开始预加载
+            img.src = 'assets/images/backgrounds/space_background.jpg';
+        }
+        
+        // 页面加载完成后立即预加载背景图
+        document.addEventListener('DOMContentLoaded', preloadBackgroundImage);
+        
+        // 音频管理系统
+        class AudioManager {
+            constructor() {
+                this.bgMusic = document.getElementById('bgMusic');
+                this.shootSound = document.getElementById('shootSound');
+                
+                // 调试音频元素
+                console.log('背景音乐元素:', this.bgMusic);
+                console.log('射击音效元素:', this.shootSound);
+                
+                // 创建音效池 - 恢复到5个并发播放
+                this.shootSoundPool = [];
+                this.maxConcurrentSounds = 5;
+                this.currentSoundIndex = 0;
+                
+                // 音效队列系统 - 串行播放
+                this.soundQueue = [];
+                this.isProcessingQueue = false;
+                
+                // 初始化音效池
+                this.initSoundPool();
+                
+                // 监听音频加载事件
+                if (this.shootSound) {
+                    console.log('射击音效初始状态:', {
+                        src: this.shootSound.src,
+                        currentSrc: this.shootSound.currentSrc,
+                        readyState: this.shootSound.readyState
+                    });
+                    
+                    this.shootSound.addEventListener('loadstart', () => console.log('🔄 开始加载射击音效'));
+                    this.shootSound.addEventListener('canplay', () => console.log('✅ 射击音效可以播放'));
+                    this.shootSound.addEventListener('canplaythrough', () => console.log('✅ 射击音效完全加载'));
+                    this.shootSound.addEventListener('error', (e) => console.log('❌ 射击音效加载错误:', e));
+                    this.shootSound.addEventListener('loadeddata', () => console.log('📊 射击音效数据加载完成'));
+                    
+                    // 强制加载音频
+                    this.shootSound.load();
+                }
+                
+                // 默认设置
+                this.settings = {
+                    bgMusicEnabled: true,
+                    bgMusicVolume: 0.5,
+                    soundEffectEnabled: true,
+                    soundEffectVolume: 0.5
+                };
+                
+                // 从本地存储加载设置
+                this.loadSettings();
+                this.initAudio();
+                this.initSettingsUI();
+            }
+            
+            initSoundPool() {
+                // 等待原音频加载完成后再创建音效池
+                if (!this.shootSound) {
+                    console.log('原音频元素不存在，无法创建音效池');
+                    return;
+                }
+                
+                // 如果音频还没加载完成，等待加载
+                if (this.shootSound.readyState < 2) {
+                    console.log('等待音频加载完成后创建音效池...');
+                    this.shootSound.addEventListener('canplay', () => {
+                        this.createSoundPool();
+                    }, { once: true });
+                } else {
+                    this.createSoundPool();
+                }
+            }
+            
+            createSoundPool() {
+                console.log('开始创建音效池...');
+                this.shootSoundPool = []; // 重置音效池
+                
+                // 创建音效池，每个都是原音频的克隆
+                for (let i = 0; i < this.maxConcurrentSounds; i++) {
+                    try {
+                        const soundClone = this.shootSound.cloneNode();
+                        soundClone.volume = this.settings.soundEffectVolume;
+                        soundClone.preload = 'auto';
+                        
+                        this.shootSoundPool.push({
+                            audio: soundClone,
+                            isPlaying: false
+                        });
+                    } catch (error) {
+                        console.log(`创建音效池第${i}个实例失败:`, error);
+                    }
+                }
+                console.log(`音效池创建完成，支持${this.shootSoundPool.length}个并发播放`);
+            }
+            
+            initAudio() {
+                if (this.bgMusic) {
+                    this.bgMusic.volume = this.settings.bgMusicVolume;
+                }
+                if (this.shootSound) {
+                    this.shootSound.volume = this.settings.soundEffectVolume;
+                }
+            }
+            
+            initSettingsUI() {
+                // 设置按钮事件
+                const settingsBtn = document.getElementById('settingsBtn');
+                const settingsModal = document.getElementById('settingsModal');
+                const closeSettings = document.getElementById('closeSettings');
+                
+                if (settingsBtn) {
+                    settingsBtn.addEventListener('click', () => {
+                        settingsModal.style.display = 'flex';
+                    });
+                }
+                
+                if (closeSettings) {
+                    closeSettings.addEventListener('click', () => {
+                        settingsModal.style.display = 'none';
+                    });
+                }
+                
+                // 点击弹窗外部关闭
+                if (settingsModal) {
+                    settingsModal.addEventListener('click', (e) => {
+                        if (e.target === settingsModal) {
+                            settingsModal.style.display = 'none';
+                        }
+                    });
+                }
+                
+                // 背景音乐开关
+                const bgMusicToggle = document.getElementById('bgMusicToggle');
+                if (bgMusicToggle) {
+                    bgMusicToggle.classList.toggle('active', this.settings.bgMusicEnabled);
+                    bgMusicToggle.addEventListener('click', () => {
+                        this.settings.bgMusicEnabled = !this.settings.bgMusicEnabled;
+                        bgMusicToggle.classList.toggle('active', this.settings.bgMusicEnabled);
+                        this.updateBgMusic();
+                        this.saveSettings();
+                    });
+                }
+                
+                // 背景音乐音量
+                const bgMusicVolume = document.getElementById('bgMusicVolume');
+                const bgMusicValue = document.getElementById('bgMusicValue');
+                if (bgMusicVolume && bgMusicValue) {
+                    bgMusicVolume.value = this.settings.bgMusicVolume * 100;
+                    bgMusicValue.textContent = Math.round(this.settings.bgMusicVolume * 100) + '%';
+                    
+                    bgMusicVolume.addEventListener('input', (e) => {
+                        this.settings.bgMusicVolume = e.target.value / 100;
+                        bgMusicValue.textContent = e.target.value + '%';
+                        if (this.bgMusic) {
+                            this.bgMusic.volume = this.settings.bgMusicVolume;
+                        }
+                        this.saveSettings();
+                    });
+                }
+                
+                // 音效开关
+                const soundEffectToggle = document.getElementById('soundEffectToggle');
+                if (soundEffectToggle) {
+                    soundEffectToggle.classList.toggle('active', this.settings.soundEffectEnabled);
+                    soundEffectToggle.addEventListener('click', () => {
+                        this.settings.soundEffectEnabled = !this.settings.soundEffectEnabled;
+                        soundEffectToggle.classList.toggle('active', this.settings.soundEffectEnabled);
+                        this.saveSettings();
+                    });
+                }
+                
+                // 音效音量
+                const soundEffectVolume = document.getElementById('soundEffectVolume');
+                const soundEffectValue = document.getElementById('soundEffectValue');
+                if (soundEffectVolume && soundEffectValue) {
+                    soundEffectVolume.value = this.settings.soundEffectVolume * 100;
+                    soundEffectValue.textContent = Math.round(this.settings.soundEffectVolume * 100) + '%';
+                    
+                    soundEffectVolume.addEventListener('input', (e) => {
+                        this.settings.soundEffectVolume = e.target.value / 100;
+                        soundEffectValue.textContent = e.target.value + '%';
+                        
+                        // 更新原音频和音频池的音量
+                        if (this.shootSound) {
+                            this.shootSound.volume = this.settings.soundEffectVolume;
+                        }
+                        
+                        // 更新音频池中所有音频的音量
+                        this.shootSoundPool.forEach(soundObj => {
+                            soundObj.audio.volume = this.settings.soundEffectVolume;
+                        });
+                        
+                        this.saveSettings();
+                    });
+                }
+            }
+            
+            startBgMusic() {
+                if (this.bgMusic && this.settings.bgMusicEnabled) {
+                    // 设置初始音量为0，准备渐变
+                    this.bgMusic.volume = 0;
+                    
+                    // 尝试自动播放
+                    const playPromise = this.bgMusic.play();
+                    if (playPromise !== undefined) {
+                        playPromise.then(() => {
+                            // 播放成功，开始音量渐变
+                            this.fadeInMusic();
+                        }).catch(error => {
+                            console.log('背景音乐自动播放被阻止，将在用户交互后播放');
+                            // 添加用户交互监听器
+                            this.setupAutoPlay();
+                        });
+                    }
+                }
+            }
+            
+            fadeInMusic() {
+                if (!this.bgMusic || !this.settings.bgMusicEnabled) return;
+                
+                const targetVolume = this.settings.bgMusicVolume;
+                const fadeSteps = 30; // 渐变步数
+                const fadeInterval = 100; // 每步间隔100ms，总共3秒
+                const volumeStep = targetVolume / fadeSteps;
+                
+                let currentStep = 0;
+                const fadeTimer = setInterval(() => {
+                    currentStep++;
+                    const newVolume = Math.min(volumeStep * currentStep, targetVolume);
+                    this.bgMusic.volume = newVolume;
+                    
+                    if (currentStep >= fadeSteps || newVolume >= targetVolume) {
+                        clearInterval(fadeTimer);
+                        this.bgMusic.volume = targetVolume; // 确保最终音量正确
+                    }
+                }, fadeInterval);
+            }
+            
+            setupAutoPlay() {
+                // 简单的用户交互监听器
+                let hasPlayed = false;
+                
+                const tryPlayMusic = () => {
+                    if (hasPlayed || !this.settings.bgMusicEnabled) return;
+                    
+                    this.bgMusic.volume = 0; // 从0开始
+                    this.bgMusic.play().then(() => {
+                        hasPlayed = true;
+                        this.fadeInMusic(); // 开始渐变
+                        // 移除监听器
+                        document.removeEventListener('click', tryPlayMusic);
+                        document.removeEventListener('touchstart', tryPlayMusic);
+                        document.removeEventListener('keydown', tryPlayMusic);
+                    }).catch(() => {
+                        // 静默失败
+                    });
+                };
+                
+                // 监听用户交互
+                document.addEventListener('click', tryPlayMusic);
+                document.addEventListener('touchstart', tryPlayMusic);
+                document.addEventListener('keydown', tryPlayMusic);
+            }
+            
+            updateBgMusic() {
+                if (!this.bgMusic) return;
+                
+                if (this.settings.bgMusicEnabled) {
+                    if (this.bgMusic.paused) {
+                        this.startBgMusic();
+                    } else {
+                        // 如果音乐正在播放，直接更新音量（不需要渐变）
+                        this.bgMusic.volume = this.settings.bgMusicVolume;
+                    }
+                } else {
+                    this.bgMusic.pause();
+                }
+            }
+            
+            stopBgMusic() {
+                console.log('stopBgMusic被调用');
+                if (this.bgMusic) {
+                    console.log('暂停背景音乐');
+                    this.bgMusic.pause();
+                } else {
+                    console.log('背景音乐元素未找到');
+                }
+            }
+            
+            // 新增：游戏中降低背景音乐音量
+            lowerBgMusicForGame() {
+                console.log('游戏开始，降低背景音乐音量');
+                if (this.bgMusic && this.settings.bgMusicEnabled) {
+                    const currentVolume = this.bgMusic.volume;
+                    const targetVolume = Math.min(this.settings.bgMusicVolume, 0.07);
+                    
+                    console.log(`背景音乐音量从 ${currentVolume.toFixed(2)} 降低到 ${targetVolume.toFixed(2)}`);
+                    
+                    // 如果当前音量已经等于或小于目标音量，直接设置
+                    if (currentVolume <= targetVolume) {
+                        this.bgMusic.volume = targetVolume;
+                        return;
+                    }
+                    
+                    // 平滑过渡：2秒内从当前音量降低到目标音量
+                    const fadeSteps = 20; // 渐变步数
+                    const fadeInterval = 100; // 每步间隔100ms，总共2秒
+                    const volumeStep = (currentVolume - targetVolume) / fadeSteps;
+                    
+                    let currentStep = 0;
+                    const fadeTimer = setInterval(() => {
+                        currentStep++;
+                        const newVolume = Math.max(currentVolume - (volumeStep * currentStep), targetVolume);
+                        this.bgMusic.volume = newVolume;
+                        
+                        if (currentStep >= fadeSteps || newVolume <= targetVolume) {
+                            clearInterval(fadeTimer);
+                            this.bgMusic.volume = targetVolume; // 确保最终音量正确
+                            console.log(`背景音乐音量渐变完成: ${targetVolume.toFixed(2)}`);
+                        }
+                    }, fadeInterval);
+                } else {
+                    console.log('背景音乐未启用或元素未找到');
+                }
+            }
+            
+            // 新增：恢复背景音乐正常音量
+            restoreBgMusicVolume() {
+                console.log('恢复背景音乐正常音量');
+                if (this.bgMusic && this.settings.bgMusicEnabled) {
+                    const currentVolume = this.bgMusic.volume;
+                    const targetVolume = this.settings.bgMusicVolume;
+                    
+                    console.log(`背景音乐音量从 ${currentVolume.toFixed(2)} 恢复到 ${targetVolume.toFixed(2)}`);
+                    
+                    // 如果当前音量已经等于目标音量，直接设置
+                    if (Math.abs(currentVolume - targetVolume) < 0.01) {
+                        this.bgMusic.volume = targetVolume;
+                        return;
+                    }
+                    
+                    // 平滑过渡：1.5秒内从当前音量恢复到目标音量
+                    const fadeSteps = 15; // 渐变步数
+                    const fadeInterval = 100; // 每步间隔100ms，总共1.5秒
+                    const volumeStep = (targetVolume - currentVolume) / fadeSteps;
+                    
+                    let currentStep = 0;
+                    const fadeTimer = setInterval(() => {
+                        currentStep++;
+                        const newVolume = Math.min(currentVolume + (volumeStep * currentStep), targetVolume);
+                        this.bgMusic.volume = newVolume;
+                        
+                        if (currentStep >= fadeSteps || Math.abs(newVolume - targetVolume) < 0.01) {
+                            clearInterval(fadeTimer);
+                            this.bgMusic.volume = targetVolume; // 确保最终音量正确
+                            console.log(`背景音乐音量恢复完成: ${targetVolume.toFixed(2)}`);
+                        }
+                    }, fadeInterval);
+                } else {
+                    console.log('背景音乐未启用或元素未找到');
+                }
+            }
+            
+            testShootSound() {
+                console.log('=== 手动测试射击音效 ===');
+                
+                // 强制重新加载音频
+                console.log('强制重新加载音频文件...');
+                this.shootSound.src = '';
+                this.shootSound.src = 'assets/audio/shoot.mp3';
+                this.shootSound.load();
+                
+                // 添加详细的事件监听
+                const onCanPlay = () => {
+                    console.log('✅ 音频可以播放，尝试播放...');
+                    this.playShootSound();
+                    this.shootSound.removeEventListener('canplay', onCanPlay);
+                };
+                
+                const onError = (e) => {
+                    console.log('❌ 音频加载失败:', e);
+                    console.log('音频文件可能不存在或格式不支持');
+                };
+                
+                this.shootSound.addEventListener('canplay', onCanPlay);
+                this.shootSound.addEventListener('error', onError);
+                
+                // 如果5秒后还没加载成功，尝试直接播放
+                setTimeout(() => {
+                    if (this.shootSound.readyState < 2) {
+                        console.log('⚠️ 音频加载超时，尝试直接播放...');
+                        this.playShootSound();
+                    }
+                }, 5000);
+            }
+            
+            playShootSound() {
+                if (!this.settings.soundEffectEnabled) {
+                    return;
+                }
+                
+                // 如果音效池不可用，使用原来的方式
+                if (!this.shootSoundPool || this.shootSoundPool.length === 0) {
+                    console.log('音效池不可用，使用原音频播放');
+                    this.playOriginalSound();
+                    return;
+                }
+                
+                // 直接尝试播放，不使用队列（允许并发）
+                this.playFromPool();
+            }
+            
+            playFromPool() {
+                // 寻找可用的音频实例
+                let availableSound = null;
+                let playingCount = 0;
+                
+                for (let soundObj of this.shootSoundPool) {
+                    if (soundObj.isPlaying) {
+                        playingCount++;
+                    } else if (!availableSound) {
+                        availableSound = soundObj;
+                    }
+                }
+                
+                console.log(`音效池状态: ${playingCount}/${this.shootSoundPool.length} 正在播放`);
+                
+                if (availableSound) {
+                    try {
+                        const audio = availableSound.audio;
+                        
+                        // 设置音量并重置播放位置
+                        audio.volume = this.settings.soundEffectVolume;
+                        audio.currentTime = 0;
+                        
+                        // 标记为正在播放
+                        availableSound.isPlaying = true;
+                        
+                        // 播放音效
+                        const playPromise = audio.play();
+                        if (playPromise !== undefined) {
+                            playPromise.then(() => {
+                                console.log('音效开始播放（并发）');
+                                
+                                // 播放成功，监听结束事件
+                                const onEnded = () => {
+                                    availableSound.isPlaying = false;
+                                    audio.removeEventListener('ended', onEnded);
+                                    console.log('音效播放结束');
+                                };
+                                
+                                audio.addEventListener('ended', onEnded, { once: true });
+                                
+                                // 设置超时保护，防止事件不触发
+                                setTimeout(() => {
+                                    if (availableSound.isPlaying && (audio.ended || audio.paused)) {
+                                        console.log('音效超时保护触发');
+                                        availableSound.isPlaying = false;
+                                        audio.removeEventListener('ended', onEnded);
+                                    }
+                                }, 2000); // 2秒超时保护
+                                
+                            }).catch(error => {
+                                // 播放失败，重置状态
+                                availableSound.isPlaying = false;
+                                console.log('音效播放失败:', error);
+                            });
+                        } else {
+                            // 旧版浏览器兼容
+                            availableSound.isPlaying = false;
+                            console.log('浏览器不支持Promise播放');
+                        }
+                    } catch (error) {
+                        availableSound.isPlaying = false;
+                        console.log('音效播放异常:', error);
+                    }
+                } else {
+                    console.log('所有音效实例都在使用中，跳过此次播放');
+                }
+            }
+            
+            // 保留processNextSound方法以防其他地方调用，但改为空实现
+            processNextSound() {
+                // 不再使用队列系统，改为直接并发播放
+                console.log('processNextSound已弃用，使用并发播放模式');
+            }
+            
+            playOriginalSound() {
+                // 备用播放方法，使用原音频
+                if (this.shootSound) {
+                    try {
+                        this.shootSound.volume = this.settings.soundEffectVolume;
+                        this.shootSound.currentTime = 0;
+                        
+                        const playPromise = this.shootSound.play();
+                        if (playPromise !== undefined) {
+                            playPromise.catch(error => {
+                                console.log('原音频播放失败:', error);
+                            });
+                        }
+                    } catch (error) {
+                        console.log('原音频播放异常:', error);
+                    }
+                }
+            }
+            
+            saveSettings() {
+                localStorage.setItem('gameAudioSettings', JSON.stringify(this.settings));
+            }
+            
+            loadSettings() {
+                const saved = localStorage.getItem('gameAudioSettings');
+                if (saved) {
+                    try {
+                        this.settings = { ...this.settings, ...JSON.parse(saved) };
+                    } catch (e) {
+                        console.log('加载音频设置失败，使用默认设置');
+                    }
+                }
+            }
+        }
+        
+        // 初始化音频管理器
+        let audioManager;
+        document.addEventListener('DOMContentLoaded', () => {
+            audioManager = new AudioManager();
+            // 将audioManager设为全局变量，供game.js使用
+            window.audioManager = audioManager;
+            
+            // 页面加载后尝试播放背景音乐
+            setTimeout(() => {
+                audioManager.startBgMusic();
+            }, 1000);
+        });
+        
+        // Web Audio API测试函数
+        function testBeepSound() {
+            console.log('=== 测试Web Audio API蜂鸣声 ===');
+            try {
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                oscillator.frequency.setValueAtTime(800, audioContext.currentTime); // 800Hz频率
+                gainNode.gain.setValueAtTime(0.3, audioContext.currentTime); // 30%音量
+                
+                oscillator.start();
+                oscillator.stop(audioContext.currentTime + 0.2); // 播放0.2秒
+                
+                console.log('✅ Web Audio API蜂鸣声播放成功');
+            } catch (error) {
+                console.log('❌ Web Audio API测试失败:', error);
+            }
+        }
+        
         // 创建闪烁星星 - 增强版
         function createStars() {
             const starsContainer = document.getElementById('starsContainer');

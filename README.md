@@ -158,6 +158,17 @@ docker run -p 80:80 drone-war-game
 
 MIT License
 
+## 🎨 素材声明
+
+### 音乐与图片素材
+游戏内的音乐及图片素材均由AI生成。
+
+### 音效素材
+- **飞船激光射击音效**
+  - 许可：CC-BY
+  - 作者：Quonux
+  - 来源：耳聆网
+
 ## 👥 作者
 
 DroneWar Team
