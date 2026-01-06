@@ -43,13 +43,17 @@ out/
 coverage/
 .nyc_output/
 
-# 调试文件（可选，如果想保留就删除这些行）
-debug*.html
-test*.html
+# 调试和测试文件（保留核心文件，只排除临时测试文件）
+# 如果需要上传测试文件，可以删除下面这些行
+debug.html
+debug_click.html
+test.html
+test_game.html
 simple_test.html
 quick_test.html
 local_test.html
 minimal_test.html
+local_test.js
 game_status_check.js
 
 # 备份文件
