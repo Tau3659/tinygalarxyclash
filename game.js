@@ -5,12 +5,20 @@ const GameConfig = {
         '2v2': { players: 4, teams: 2 },
         'ffa': { players: 3, teams: 3 }
     },
-    colors: ['#00ff00', '#0099ff', '#ff0000', '#ffff00'],
+    colors: ['#00ff00', '#0099ff', '#ff0000', '#ffba00'],
     droneColors: {
         '#00ff00': '#00ff00',
         '#0099ff': '#0099ff', 
         '#ff0000': '#ff0000',
-        '#ffff00': '#ffff00'
+        '#ffba00': '#ffba00'
+    },
+    // 爆炸效果配置
+    explosion: {
+        duration: 400,          // 爆炸持续时间（毫秒）
+        maxRadius: 18,          // 最大半径
+        radiusVariation: 4,     // 半径随机变化范围
+        expandPhase: 0.3,       // 扩张阶段占比（30%）
+        maxExplosions: 20       // 最大同时爆炸数量（性能优化）
     },
     // AI 难度配置
     difficulty: {
@@ -64,6 +72,202 @@ const GameConfig = {
     baseWidth: 1200,
     baseHeight: 800
 };
+
+// 爆炸效果管理器
+class ExplosionManager {
+    constructor() {
+        this.explosions = [];
+        this.explosionPool = []; // 对象池优化性能
+        this.spriteImage = null; // 雪碧图图像
+        this.spriteFrameCount = 9; // 9帧动画
+        this.spriteFrameSize = 60; // 60x60px每帧
+        this.loadSpriteImage(); // 自动加载雪碧图
+    }
+    
+    // 加载雪碧图
+    loadSpriteImage() {
+        const img = new Image();
+        img.onload = () => {
+            this.spriteImage = img;
+            console.log('爆炸雪碧图已加载');
+        };
+        img.onerror = () => {
+            console.log('爆炸雪碧图加载失败，使用程序化效果');
+        };
+        img.src = 'assets/images/ship_explosion.png';
+    }
+    
+    // 创建爆炸效果
+    createExplosion(x, y, color, scale = 1) {
+        // 如果爆炸数量超过限制，移除最老的爆炸
+        if (this.explosions.length >= GameConfig.explosion.maxExplosions) {
+            const oldExplosion = this.explosions.shift();
+            this.returnToPool(oldExplosion);
+        }
+        
+        // 从对象池获取或创建新的爆炸对象
+        let explosion = this.explosionPool.pop();
+        if (!explosion) {
+            explosion = {};
+        }
+        
+        // 初始化爆炸参数
+        explosion.x = x;
+        explosion.y = y;
+        explosion.color = color;
+        explosion.scale = scale;
+        explosion.startTime = Date.now();
+        explosion.duration = GameConfig.explosion.duration;
+        
+        this.explosions.push(explosion);
+    }
+    
+    // 更新所有爆炸效果
+    update() {
+        const currentTime = Date.now();
+        
+        // 移除已完成的爆炸（倒序遍历）
+        for (let i = this.explosions.length - 1; i >= 0; i--) {
+            const explosion = this.explosions[i];
+            if (currentTime - explosion.startTime >= explosion.duration) {
+                this.returnToPool(explosion);
+                this.explosions.splice(i, 1);
+            }
+        }
+    }
+    
+    // 渲染所有爆炸效果
+    render(ctx) {
+        const currentTime = Date.now();
+        
+        this.explosions.forEach(explosion => {
+            this.renderExplosion(ctx, explosion, currentTime);
+        });
+    }
+    
+    // 渲染单个爆炸效果
+    renderExplosion(ctx, explosion, currentTime) {
+        const elapsed = currentTime - explosion.startTime;
+        const progress = elapsed / explosion.duration;
+        
+        if (progress >= 1) return;
+        
+        const x = explosion.x;
+        const y = explosion.y;
+        const color = explosion.color;
+        const scale = explosion.scale;
+        
+        ctx.save();
+        
+        if (this.spriteImage) {
+            // 使用雪碧图渲染
+            this.renderSpriteExplosion(ctx, explosion, progress);
+        } else {
+            // 使用程序化光晕效果作为后备
+            this.renderProgrammaticExplosion(ctx, explosion, progress);
+        }
+        
+        ctx.restore();
+    }
+    
+    // 渲染雪碧图爆炸效果
+    renderSpriteExplosion(ctx, explosion, progress) {
+        const x = explosion.x;
+        const y = explosion.y;
+        const color = explosion.color;
+        const scale = explosion.scale;
+        
+        // 计算当前帧
+        const frameIndex = Math.floor(progress * this.spriteFrameCount);
+        const clampedFrameIndex = Math.min(frameIndex, this.spriteFrameCount - 1);
+        
+        // 使用滤色混合模式去除黑色背景
+        ctx.globalCompositeOperation = 'screen';
+        
+        // 应用色相旋转来改变颜色
+        const hueRotation = this.getHueRotation(color);
+        if (hueRotation !== 0) {
+            ctx.filter = `hue-rotate(${hueRotation}deg)`;
+        }
+        
+        // 计算源坐标（水平排列）
+        const sx = clampedFrameIndex * this.spriteFrameSize;
+        const sy = 0;
+        const sw = this.spriteFrameSize;
+        const sh = this.spriteFrameSize;
+        
+        // 计算绘制尺寸和位置
+        const drawSize = this.spriteFrameSize * scale * 1.5; // 增大到1.5倍，约90px
+        const dx = x - drawSize / 2;
+        const dy = y - drawSize / 2;
+        
+        // 绘制雪碧图帧
+        ctx.drawImage(this.spriteImage, sx, sy, sw, sh, dx, dy, drawSize, drawSize);
+        
+        // 恢复默认混合模式和滤镜
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.filter = 'none';
+    }
+    
+    // 程序化爆炸效果（后备方案）
+    renderProgrammaticExplosion(ctx, explosion, progress) {
+        const x = explosion.x;
+        const y = explosion.y;
+        const color = explosion.color;
+        const scale = explosion.scale;
+        
+        // 简化的光晕效果
+        const maxRadius = 35 * scale; // 增大到35px，与雪碧图效果匹配
+        let currentRadius, alpha;
+        
+        if (progress < 0.3) {
+            const expandProgress = progress / 0.3;
+            currentRadius = maxRadius * (1 - Math.pow(1 - expandProgress, 1.5));
+            alpha = 1.0 - expandProgress * 0.1;
+        } else {
+            const fadeProgress = (progress - 0.3) / 0.7;
+            currentRadius = maxRadius * (1 + fadeProgress * 0.05);
+            alpha = 0.9 * (1 - fadeProgress * fadeProgress * fadeProgress);
+        }
+        
+        // 主光晕
+        const gradient = ctx.createRadialGradient(x, y, 0, x, y, currentRadius);
+        gradient.addColorStop(0, '#ffffff' + Math.floor(alpha * 255).toString(16).padStart(2, '0'));
+        gradient.addColorStop(0.3, color + Math.floor(alpha * 200).toString(16).padStart(2, '0'));
+        gradient.addColorStop(1, 'transparent');
+        
+        ctx.fillStyle = gradient;
+        ctx.beginPath();
+        ctx.arc(x, y, currentRadius, 0, Math.PI * 2);
+        ctx.fill();
+    }
+    
+    // 获取色相旋转角度
+    getHueRotation(targetColor) {
+        // 基于蓝色雪碧图计算色相旋转角度
+        const colorMap = {
+            '#00ff00': -60,  // 绿色：蓝色 → 绿色
+            '#0099ff': 0,    // 蓝色：无需旋转
+            '#ff0000': 140,  // 红色：蓝色 → 红色
+            '#ffba00': 180   // 黄色：蓝色 → 黄色
+        };
+        
+        return colorMap[targetColor] || 0;
+    }
+    
+    // 回收爆炸对象到对象池
+    returnToPool(explosion) {
+        if (this.explosionPool.length < GameConfig.explosion.maxExplosions) {
+            this.explosionPool.push(explosion);
+        }
+    }
+    
+    // 清理所有爆炸效果
+    clear() {
+        this.explosions.forEach(explosion => this.returnToPool(explosion));
+        this.explosions.length = 0;
+    }
+}
 
 // 动态缩放系统
 class ScaleManager {
@@ -121,7 +325,7 @@ class ScaleManager {
         return {
             // 无人机属性
             droneSize: this.scaleValue(8),
-            droneCollisionRadius: this.scaleValue(10), // 碰撞半径，比显示大小稍大
+            droneCollisionRadius: this.scaleValue(9), // 碰撞半径，从10px改为9px
             droneBaseSpeed: this.scaleValue(1.5), // 减半：3 -> 1.5
             droneSpeedUpgrade: this.scaleValue(0.4), // 减半：0.8 -> 0.4
             droneAttackRange: this.scaleValue(160), // 增加到20倍体长，确保后排无人机能射击
@@ -197,6 +401,9 @@ class DroneGame {
         // 性能优化：对象池
         this.projectilePool = [];
         this.maxProjectilePool = 100;
+        
+        // 爆炸效果管理器
+        this.explosionManager = new ExplosionManager();
         
         // 性能优化：缓存和计数器
         this.frameCount = 0;
@@ -329,9 +536,6 @@ class DroneGame {
             }
         });
         
-        // 初始化视觉效果
-        this.initStarfield();
-        
         // 开始游戏循环
         this.gameLoop();
         
@@ -422,9 +626,8 @@ class DroneGame {
         this.scaleManager = new ScaleManager(width, height);
         this.scaledValues = this.scaleManager.getScaledValues();
         
-        // 重新初始化星空背景（因为画布尺寸改变了）
         if (this.gameState === 'playing') {
-            this.initStarfield();
+            // 游戏进行中时重新初始化相关组件
         }
         
         console.log(`画布设置为全屏: ${width}x${height} (${isMobile ? '移动端' : '桌面端'}, ${isLandscape ? '横屏' : '竖屏'})`);
@@ -439,6 +642,9 @@ class DroneGame {
         this.frameCount = 0;
         this.lastUIUpdate = 0;
         this.lastAIUpdate = 0;
+        
+        // 清理爆炸效果
+        this.explosionManager.clear();
         
         const config = GameConfig.modes[this.gameMode];
         
@@ -1005,6 +1211,9 @@ class DroneGame {
         // 更新投射物
         this.updateProjectiles(deltaTime);
         
+        // 更新爆炸效果
+        this.explosionManager.update();
+        
         // 检查碰撞
         this.checkCollisions();
         
@@ -1053,6 +1262,14 @@ class DroneGame {
             // 移除死亡的无人机（倒序遍历避免索引问题）
             for (let j = player.drones.length - 1; j >= 0; j--) {
                 if (player.drones[j].health <= 0) {
+                    const deadDrone = player.drones[j];
+                    // 触发爆炸效果，使用游戏缩放
+                    this.explosionManager.createExplosion(
+                        deadDrone.x, 
+                        deadDrone.y, 
+                        deadDrone.color, 
+                        this.scaleManager.scale
+                    );
                     player.drones.splice(j, 1);
                 }
             }
@@ -2428,22 +2645,6 @@ class DroneGame {
         return Math.sqrt(dx * dx + dy * dy);
     }
     
-    // 初始化星空背景
-    initStarfield() {
-        this.stars = [];
-        const starCount = 200;
-        
-        for (let i = 0; i < starCount; i++) {
-            this.stars.push({
-                x: Math.random() * this.canvas.width,
-                y: Math.random() * this.canvas.height,
-                size: Math.random() * 2 + 0.5,
-                brightness: Math.random() * 0.8 + 0.2,
-                twinkleSpeed: Math.random() * 0.02 + 0.01
-            });
-        }
-    }
-    
     // 渲染游戏背景图片
     renderGameBackground() {
         if (this.gameBackgroundLoaded) {
@@ -2486,46 +2687,9 @@ class DroneGame {
         }
     }
     
-    // 渲染星空背景（装饰层）
-    renderStarfield() {
-        // 不再绘制渐变背景，只绘制星星作为装饰
-        // 初始化星星（如果还没有）
-        if (!this.stars) {
-            this.initStarfield();
-        }
-        
-        // 绘制星星
-        const time = Date.now() * 0.001;
-        for (let i = 0; i < this.stars.length; i++) {
-            const star = this.stars[i];
-            const twinkle = Math.sin(time * star.twinkleSpeed) * 0.3 + 0.7;
-            const alpha = star.brightness * twinkle;
-            
-            this.ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
-            this.ctx.beginPath();
-            this.ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
-            this.ctx.fill();
-            
-            // 添加星光效果
-            if (star.size > 1.5) {
-                this.ctx.strokeStyle = `rgba(255, 255, 255, ${alpha * 0.3})`;
-                this.ctx.lineWidth = 0.5;
-                this.ctx.beginPath();
-                this.ctx.moveTo(star.x - star.size * 2, star.y);
-                this.ctx.lineTo(star.x + star.size * 2, star.y);
-                this.ctx.moveTo(star.x, star.y - star.size * 2);
-                this.ctx.lineTo(star.x, star.y + star.size * 2);
-                this.ctx.stroke();
-            }
-        }
-    }
-    
     // 增强的无人机渲染
     renderEnhancedDrone(drone, color) {
         const ctx = this.ctx;
-        
-        // 绘制火箭尾焰（如果无人机在移动）
-        this.renderThrusterFlame(drone, color);
         
         // 绘制无人机主体
         ctx.fillStyle = color;
@@ -2559,80 +2723,6 @@ class DroneGame {
         }
     }
     
-    // 渲染火箭尾焰效果
-    renderThrusterFlame(drone, color) {
-        const ctx = this.ctx;
-        
-        // 检查无人机是否在移动
-        const isMoving = Math.abs(drone.vx) > 0.1 || Math.abs(drone.vy) > 0.1;
-        if (!isMoving) return;
-        
-        // 计算移动强度
-        const moveSpeed = Math.sqrt(drone.vx * drone.vx + drone.vy * drone.vy);
-        const intensity = Math.min(moveSpeed / drone.moveSpeed, 1.0);
-        
-        // 计算尾焰方向（与移动方向相反）
-        const flameAngle = Math.atan2(-drone.vy, -drone.vx);
-        
-        // 尾焰参数
-        const flameLength = drone.size * 1.5 * intensity; // 尾焰长度
-        const flameWidth = drone.size * 0.6; // 尾焰宽度
-        const flameDistance = drone.size * 0.8; // 距离无人机中心的距离
-        
-        // 计算尾焰起始位置
-        const flameStartX = drone.x + Math.cos(flameAngle) * flameDistance;
-        const flameStartY = drone.y + Math.sin(flameAngle) * flameDistance;
-        
-        // 计算尾焰形状的三个点
-        const flameEndX = flameStartX + Math.cos(flameAngle) * flameLength;
-        const flameEndY = flameStartY + Math.sin(flameAngle) * flameLength;
-        
-        // 尾焰两侧的点
-        const sideAngle1 = flameAngle + Math.PI / 2;
-        const sideAngle2 = flameAngle - Math.PI / 2;
-        
-        const side1X = flameStartX + Math.cos(sideAngle1) * flameWidth / 2;
-        const side1Y = flameStartY + Math.sin(sideAngle1) * flameWidth / 2;
-        const side2X = flameStartX + Math.cos(sideAngle2) * flameWidth / 2;
-        const side2Y = flameStartY + Math.sin(sideAngle2) * flameWidth / 2;
-        
-        // 创建尾焰渐变
-        const gradient = ctx.createLinearGradient(
-            flameStartX, flameStartY,
-            flameEndX, flameEndY
-        );
-        gradient.addColorStop(0, color + 'FF'); // 起始处完全不透明
-        gradient.addColorStop(0.3, color + 'CC'); // 中间部分
-        gradient.addColorStop(0.7, color + '66'); // 渐变透明
-        gradient.addColorStop(1, 'transparent'); // 末端完全透明
-        
-        // 绘制尾焰
-        ctx.fillStyle = gradient;
-        ctx.beginPath();
-        ctx.moveTo(side1X, side1Y);
-        ctx.lineTo(side2X, side2Y);
-        ctx.lineTo(flameEndX, flameEndY);
-        ctx.closePath();
-        ctx.fill();
-        
-        // 添加内部亮光效果
-        const innerGradient = ctx.createLinearGradient(
-            flameStartX, flameStartY,
-            flameEndX, flameEndY
-        );
-        innerGradient.addColorStop(0, '#ffffff80');
-        innerGradient.addColorStop(0.5, color + '40');
-        innerGradient.addColorStop(1, 'transparent');
-        
-        ctx.fillStyle = innerGradient;
-        ctx.beginPath();
-        ctx.moveTo(flameStartX, flameStartY);
-        ctx.lineTo(flameStartX + Math.cos(sideAngle1) * flameWidth / 4, flameStartY + Math.sin(sideAngle1) * flameWidth / 4);
-        ctx.lineTo(flameEndX, flameEndY);
-        ctx.lineTo(flameStartX + Math.cos(sideAngle2) * flameWidth / 4, flameStartY + Math.sin(sideAngle2) * flameWidth / 4);
-        ctx.closePath();
-        ctx.fill();
-    }
     
     // 渲染护盾效果
     renderShieldEffect(drone, color) {
@@ -2790,9 +2880,6 @@ class DroneGame {
         // 绘制游戏背景图片
         this.renderGameBackground();
         
-        // 绘制星空背景（作为装饰层）
-        this.renderStarfield();
-        
         // 批量绘制，减少状态切换
         
         // 绘制飞船碎片
@@ -2830,6 +2917,9 @@ class DroneGame {
         for (let i = 0; i < this.projectiles.length; i++) {
             this.renderEnhancedProjectile(this.projectiles[i]);
         }
+        
+        // 绘制爆炸效果
+        this.explosionManager.render(this.ctx);
         
         // 绘制玩家集结点 - 使用缩放后的尺寸，确保圆形不变形
         const humanPlayer = this.players[0];
@@ -2907,7 +2997,7 @@ class DroneGame {
                 this.ctx.fillStyle = '#ff0000';
             } else {
                 message = '平局！';
-                this.ctx.fillStyle = '#ffff00';
+                this.ctx.fillStyle = '#ffba00';
             }
             
             this.ctx.fillText(message, this.canvas.width / 2, this.canvas.height / 2 - 80);

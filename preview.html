@@ -130,6 +130,11 @@
             transform: scale(1.2);
         }
         
+        .color-sample.selected {
+            transform: scale(1.1);
+            border: 3px solid #fff;
+        }
+        
         .controls {
             margin-top: 15px;
             text-align: center;
@@ -205,10 +210,6 @@
                 </div>
                 <div class="color-palette" id="baseColors"></div>
             </div>
-            <div class="controls">
-                <button class="control-btn" onclick="animateBase()">播放动画</button>
-                <button class="control-btn" onclick="toggleBaseHealth()">切换血量</button>
-            </div>
         </div>
         
         <!-- 无人机预览 -->
@@ -222,7 +223,7 @@
                 </div>
                 <div class="info-row">
                     <span class="info-label">碰撞半径:</span>
-                    <span class="info-value">10px</span>
+                    <span class="info-value">9px</span>
                 </div>
                 <div class="info-row">
                     <span class="info-label">攻击距离:</span>
@@ -233,11 +234,6 @@
                     <span class="info-value">180px</span>
                 </div>
                 <div class="color-palette" id="droneColors"></div>
-            </div>
-            <div class="controls">
-                <button class="control-btn" onclick="animateDrone()">推进器效果</button>
-                <button class="control-btn" onclick="toggleDroneHealth()">血量条</button>
-                <button class="control-btn" onclick="toggleTarget()">目标指示</button>
             </div>
         </div>
         
@@ -264,10 +260,6 @@
                 </div>
                 <div class="color-palette" id="projectileColors"></div>
             </div>
-            <div class="controls">
-                <button class="control-btn" onclick="fireProjectile()">发射演示</button>
-                <button class="control-btn" onclick="toggleTrail()">轨迹效果</button>
-            </div>
         </div>
         
         <!-- 资源碎片预览 -->
@@ -292,37 +284,29 @@
                     <span class="info-value">0.005 rad/s</span>
                 </div>
             </div>
-            <div class="controls">
-                <button class="control-btn" onclick="animateDebris()">旋转动画</button>
-                <button class="control-btn" onclick="damageDebris()">受伤效果</button>
-            </div>
         </div>
         
-        <!-- 特效预览 -->
+        <!-- 雪碧图爆炸效果 -->
         <div class="asset-card">
-            <h3 class="asset-title">✨ 特效系统</h3>
-            <canvas class="asset-canvas" id="effectsCanvas"></canvas>
+            <h3 class="asset-title">💥 爆炸效果</h3>
+            <canvas class="asset-canvas" id="spriteExplosionCanvas"></canvas>
             <div class="asset-info">
                 <div class="info-row">
-                    <span class="info-label">星空背景:</span>
-                    <span class="info-value">200颗星</span>
+                    <span class="info-label">动画帧数:</span>
+                    <span class="info-value">9帧</span>
                 </div>
                 <div class="info-row">
-                    <span class="info-label">粒子效果:</span>
-                    <span class="info-value">50个粒子</span>
+                    <span class="info-label">帧尺寸:</span>
+                    <span class="info-value">60x60px</span>
                 </div>
                 <div class="info-row">
-                    <span class="info-label">发光效果:</span>
-                    <span class="info-value">径向渐变</span>
+                    <span class="info-label">播放速度:</span>
+                    <span class="info-value">45ms/帧</span>
                 </div>
                 <div class="info-row">
-                    <span class="info-label">动画帧率:</span>
-                    <span class="info-value">60 FPS</span>
+                    <span class="info-label">颜色处理:</span>
+                    <span class="info-value">滤色+色相旋转</span>
                 </div>
-            </div>
-            <div class="controls">
-                <button class="control-btn" onclick="showStarfield()">星空效果</button>
-                <button class="control-btn" onclick="showExplosion()">爆炸效果</button>
             </div>
         </div>
         
@@ -347,10 +331,6 @@
                     <span class="info-label">UI面板:</span>
                     <span class="info-value">毛玻璃效果</span>
                 </div>
-            </div>
-            <div class="controls">
-                <button class="control-btn" onclick="showHealthBar()">血量条</button>
-                <button class="control-btn" onclick="showRallyPoint()">集结点</button>
             </div>
         </div>
     </div>
