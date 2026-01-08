@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>音效诊断工具 - Tiny Galaxy Clash</title>
+    <style>
+        body {
+            font-family: 'Microsoft YaHei', Arial, sans-serif;
+            background: linear-gradient(135deg, #0c1445, #1a2980);
+            color: white;
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: rgba(0, 20, 40, 0.9);
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+        
+        h1 {
+            text-align: center;
+            color: #00ff88;
+            margin-bottom: 30px;
+        }
+        
+        .test-section {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-left: 4px solid #00ff88;
+        }
+        
+        .test-button {
+            background: linear-gradient(45deg, #4CAF50, #45a049);
+            border: none;
+            color: white;
+            padding: 12px 24px;
+            margin: 5px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+        
+        .test-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(76, 175, 80, 0.4);
+        }
+        
+        .log-area {
+            background: #000;
+            color: #00ff00;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            height: 300px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            margin-top: 10px;
+        }
+        
+        .info-item {
+            display: flex;
+            justify-content: space-between;
+            margin: 5px 0;
+            padding: 5px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+        }
+        
+        .status-ok { color: #4CAF50; }
+        .status-error { color: #f44336; }
+        .status-warning { color: #ff9800; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔊 音效诊断工具</h1>
+        
+        <div class="test-section">
+            <h3>📊 环境信息</h3>
+            <div id="envInfo"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>🎵 音频文件检测</h3>
+            <button class="test-button" onclick="checkAudioFiles()">检查音频文件</button>
+            <button class="test-button" onclick="testNetworkSpeed()">测试网络速度</button>
+            <div id="audioFileInfo"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>🔊 音效播放测试</h3>
+            <button class="test-button" onclick="testSinglePlay()">单次播放测试</button>
+            <button class="test-button" onclick="testConcurrentPlay()">并发播放测试</button>
+            <button class="test-button" onclick="testRapidFire()">快速连射测试</button>
+            <button class="test-button" onclick="stopAllSounds()">停止所有音效</button>
+        </div>
+        
+        <div class="test-section">
+            <h3>📝 诊断日志</h3>
+            <button class="test-button" onclick="clearLog()">清空日志</button>
+            <button class="test-button" onclick="exportLog()">导出日志</button>
+            <div class="log-area" id="logArea"></div>
+        </div>
+    </div>
+
+    <audio id="shootSound" preload="auto" src="assets/audio/shoot.mp3"></audio>
+
+    <script>
+        let logArea = document.getElementById('logArea');
+        let shootSound = document.getElementById('shootSound');
+        let soundPool = [];
+        let testStartTime = Date.now();
+        
+        // 日志函数
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const prefix = type === 'error' ? '❌' : type === 'warning' ? '⚠️' : '✅';
+            const logMessage = `[${timestamp}] ${prefix} ${message}\n`;
+            logArea.textContent += logMessage;
+            logArea.scrollTop = logArea.scrollHeight;
+            console.log(message);
+        }
+        
+        // 初始化环境信息
+        function initEnvInfo() {
+            const envInfo = document.getElementById('envInfo');
+            const info = {
+                '用户代理': navigator.userAgent,
+                '当前域名': window.location.hostname,
+                '协议': window.location.protocol,
+                '端口': window.location.port || '默认',
+                '音频支持': 'HTMLAudioElement' in window ? '支持' : '不支持',
+                '音频格式支持': checkAudioFormats(),
+                '设备像素比': window.devicePixelRatio,
+                '屏幕尺寸': `${screen.width}x${screen.height}`,
+                '视口尺寸': `${window.innerWidth}x${window.innerHeight}`,
+                '连接类型': navigator.connection ? navigator.connection.effectiveType : '未知'
+            };
+            
+            let html = '';
+            for (const [key, value] of Object.entries(info)) {
+                html += `<div class="info-item"><span>${key}:</span><span>${value}</span></div>`;
+            }
+            envInfo.innerHTML = html;
+            
+            log(`环境检测完成 - ${window.location.hostname}`);
+        }
+        
+        function checkAudioFormats() {
+            const audio = document.createElement('audio');
+            const formats = {
+                'MP3': audio.canPlayType('audio/mpeg'),
+                'WAV': audio.canPlayType('audio/wav'),
+                'OGG': audio.canPlayType('audio/ogg')
+            };
+            
+            return Object.entries(formats)
+                .filter(([format, support]) => support !== '')
+                .map(([format, support]) => `${format}(${support})`)
+                .join(', ') || '无支持格式';
+        }
+        
+        // 检查音频文件
+        async function checkAudioFiles() {
+            log('开始检查音频文件...');
+            const audioFileInfo = document.getElementById('audioFileInfo');
+            
+            try {
+                // 检查文件是否存在
+                const response = await fetch('assets/audio/shoot.mp3', { method: 'HEAD' });
+                const fileSize = response.headers.get('content-length');
+                const contentType = response.headers.get('content-type');
+                
+                if (response.ok) {
+                    log(`音频文件存在 - 大小: ${fileSize ? Math.round(fileSize/1024) + 'KB' : '未知'}, 类型: ${contentType || '未知'}`, 'info');
+                    
+                    // 测试音频加载
+                    const testAudio = new Audio('assets/audio/shoot.mp3');
+                    testAudio.addEventListener('loadeddata', () => {
+                        log(`音频加载成功 - 时长: ${testAudio.duration.toFixed(2)}秒`, 'info');
+                    });
+                    testAudio.addEventListener('error', (e) => {
+                        log(`音频加载失败: ${e.message || '未知错误'}`, 'error');
+                    });
+                    
+                } else {
+                    log(`音频文件不存在或无法访问 - HTTP ${response.status}`, 'error');
+                }
+                
+            } catch (error) {
+                log(`检查音频文件时出错: ${error.message}`, 'error');
+            }
+        }
+        
+        // 测试网络速度
+        async function testNetworkSpeed() {
+            log('开始测试网络速度...');
+            const startTime = performance.now();
+            
+            try {
+                const response = await fetch('assets/audio/shoot.mp3?' + Date.now());
+                const endTime = performance.now();
+                const loadTime = endTime - startTime;
+                
+                if (response.ok) {
+                    const fileSize = response.headers.get('content-length');
+                    if (fileSize) {
+                        const speed = (fileSize / 1024) / (loadTime / 1000); // KB/s
+                        log(`网络速度测试 - 加载时间: ${loadTime.toFixed(0)}ms, 速度: ${speed.toFixed(1)}KB/s`, 'info');
+                    } else {
+                        log(`网络速度测试 - 加载时间: ${loadTime.toFixed(0)}ms`, 'info');
+                    }
+                } else {
+                    log(`网络测试失败 - HTTP ${response.status}`, 'error');
+                }
+            } catch (error) {
+                log(`网络测试出错: ${error.message}`, 'error');
+            }
+        }
+        
+        // 单次播放测试
+        function testSinglePlay() {
+            log('开始单次播放测试...');
+            
+            const audio = new Audio('assets/audio/shoot.mp3');
+            audio.volume = 0.5;
+            
+            audio.addEventListener('loadstart', () => log('音频开始加载'));
+            audio.addEventListener('canplay', () => log('音频可以播放'));
+            audio.addEventListener('play', () => log('音频开始播放'));
+            audio.addEventListener('ended', () => log('音频播放结束'));
+            audio.addEventListener('error', (e) => log(`音频播放错误: ${e.message || '未知'}`, 'error'));
+            
+            const playPromise = audio.play();
+            if (playPromise) {
+                playPromise.then(() => {
+                    log('播放Promise成功', 'info');
+                }).catch(error => {
+                    log(`播放Promise失败: ${error.message}`, 'error');
+                });
+            }
+        }
+        
+        // 并发播放测试
+        function testConcurrentPlay() {
+            log('开始并发播放测试 (5个实例)...');
+            
+            for (let i = 0; i < 5; i++) {
+                setTimeout(() => {
+                    const audio = new Audio('assets/audio/shoot.mp3');
+                    audio.volume = 0.3;
+                    
+                    const playPromise = audio.play();
+                    if (playPromise) {
+                        playPromise.then(() => {
+                            log(`并发实例 ${i+1} 播放成功`);
+                        }).catch(error => {
+                            log(`并发实例 ${i+1} 播放失败: ${error.message}`, 'error');
+                        });
+                    }
+                }, i * 100);
+            }
+        }
+        
+        // 快速连射测试
+        function testRapidFire() {
+            log('开始快速连射测试 (10次，间隔100ms)...');
+            
+            let count = 0;
+            const interval = setInterval(() => {
+                count++;
+                const audio = new Audio('assets/audio/shoot.mp3');
+                audio.volume = 0.2;
+                
+                const playPromise = audio.play();
+                if (playPromise) {
+                    playPromise.then(() => {
+                        log(`连射 ${count} 播放成功`);
+                    }).catch(error => {
+                        log(`连射 ${count} 播放失败: ${error.message}`, 'error');
+                    });
+                }
+                
+                if (count >= 10) {
+                    clearInterval(interval);
+                    log('快速连射测试完成');
+                }
+            }, 100);
+        }
+        
+        // 停止所有音效
+        function stopAllSounds() {
+            log('停止所有音效...');
+            // 这里只能停止通过这个页面创建的音频
+            // 实际游戏中的音效需要在游戏页面停止
+        }
+        
+        // 清空日志
+        function clearLog() {
+            logArea.textContent = '';
+            log('日志已清空');
+        }
+        
+        // 导出日志
+        function exportLog() {
+            const logContent = logArea.textContent;
+            const blob = new Blob([logContent], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `audio_debug_${new Date().toISOString().slice(0,19).replace(/:/g,'-')}.txt`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            log('日志已导出');
+        }
+        
+        // 页面加载完成后初始化
+        window.addEventListener('load', () => {
+            initEnvInfo();
+            log('音效诊断工具已启动');
+            log('请依次运行各项测试来诊断音效问题');
+        });
+    </script>
+</body>
+</html>

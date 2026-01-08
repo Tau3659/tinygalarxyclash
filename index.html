@@ -1725,11 +1725,18 @@
                 console.log('开始创建音效池...');
                 this.shootSoundPool = []; // 重置音效池
                 
+                // 确保设置已初始化
+                if (!this.settings || typeof this.settings.soundEffectVolume === 'undefined') {
+                    console.log('设置未初始化，使用默认音量');
+                    this.settings = this.settings || {};
+                    this.settings.soundEffectVolume = 0.5; // 默认音量50%
+                }
+                
                 // 创建音效池，每个都是原音频的克隆
                 for (let i = 0; i < this.maxConcurrentSounds; i++) {
                     try {
                         const soundClone = this.shootSound.cloneNode();
-                        soundClone.volume = this.settings.soundEffectVolume;
+                        soundClone.volume = this.settings.soundEffectVolume || 0.5; // 添加默认值保护
                         soundClone.preload = 'auto';
                         
                         this.shootSoundPool.push({
@@ -1823,8 +1830,8 @@
                 const soundEffectVolume = document.getElementById('soundEffectVolume');
                 const soundEffectValue = document.getElementById('soundEffectValue');
                 if (soundEffectVolume && soundEffectValue) {
-                    soundEffectVolume.value = this.settings.soundEffectVolume * 100;
-                    soundEffectValue.textContent = Math.round(this.settings.soundEffectVolume * 100) + '%';
+                    soundEffectVolume.value = (this.settings.soundEffectVolume || 0.5) * 100;
+                    soundEffectValue.textContent = Math.round((this.settings.soundEffectVolume || 0.5) * 100) + '%';
                     
                     soundEffectVolume.addEventListener('input', (e) => {
                         this.settings.soundEffectVolume = e.target.value / 100;
@@ -1832,13 +1839,17 @@
                         
                         // 更新原音频和音频池的音量
                         if (this.shootSound) {
-                            this.shootSound.volume = this.settings.soundEffectVolume;
+                            this.shootSound.volume = this.settings.soundEffectVolume || 0.5;
                         }
                         
                         // 更新音频池中所有音频的音量
-                        this.shootSoundPool.forEach(soundObj => {
-                            soundObj.audio.volume = this.settings.soundEffectVolume;
-                        });
+                        if (this.shootSoundPool) {
+                            this.shootSoundPool.forEach(soundObj => {
+                                if (soundObj && soundObj.audio) {
+                                    soundObj.audio.volume = this.settings.soundEffectVolume || 0.5;
+                                }
+                            });
+                        }
                         
                         this.saveSettings();
                     });
@@ -2080,7 +2091,7 @@
                         const audio = availableSound.audio;
                         
                         // 设置音量并重置播放位置
-                        audio.volume = this.settings.soundEffectVolume;
+                        audio.volume = this.settings.soundEffectVolume || 0.5;
                         audio.currentTime = 0;
                         
                         // 标记为正在播放
@@ -2139,7 +2150,7 @@
                 // 备用播放方法，使用原音频
                 if (this.shootSound) {
                     try {
-                        this.shootSound.volume = this.settings.soundEffectVolume;
+                        this.shootSound.volume = this.settings.soundEffectVolume || 0.5;
                         this.shootSound.currentTime = 0;
                         
                         const playPromise = this.shootSound.play();
