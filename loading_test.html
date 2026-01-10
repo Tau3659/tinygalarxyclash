@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>加载测试 - Tiny Galaxy Clash</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #000;
+            color: #fff;
+            font-family: 'Microsoft YaHei', Arial, sans-serif;
+            overflow: hidden;
+        }
+        
+        /* 加载页面样式 */
+        #loadingScreen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #0a0a1a 0%, #1a1a2e 50%, #16213e 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+            opacity: 1;
+            transition: opacity 0.5s ease-out;
+        }
+        
+        #loadingScreen.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+        
+        .loading-logo {
+            font-size: 48px;
+            font-weight: bold;
+            color: #fff;
+            text-shadow: 0 0 20px rgba(255, 255, 255, 0.5);
+            margin-bottom: 40px;
+            animation: pulse 2s ease-in-out infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.8; transform: scale(1.05); }
+        }
+        
+        .loading-container {
+            width: 400px;
+            max-width: 80vw;
+            text-align: center;
+        }
+        
+        .loading-text {
+            font-size: 18px;
+            color: #ccc;
+            margin-bottom: 20px;
+            min-height: 24px;
+        }
+        
+        .progress-bar-container {
+            width: 100%;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 15px;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #4CAF50, #81C784);
+            border-radius: 4px;
+            width: 0%;
+            transition: width 0.3s ease;
+            box-shadow: 0 0 10px rgba(76, 175, 80, 0.5);
+        }
+        
+        .progress-percentage {
+            font-size: 16px;
+            color: #4CAF50;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        
+        .loading-details {
+            font-size: 14px;
+            color: #888;
+            min-height: 20px;
+        }
+        
+        /* 加载动画点 */
+        .loading-dots {
+            display: inline-block;
+        }
+        
+        .loading-dots::after {
+            content: '';
+            animation: dots 1.5s steps(4, end) infinite;
+        }
+        
+        @keyframes dots {
+            0%, 20% { content: ''; }
+            40% { content: '.'; }
+            60% { content: '..'; }
+            80%, 100% { content: '...'; }
+        }
+        
+        #welcomeScreen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #0a0a1a 0%, #1a1a2e 50%, #16213e 100%);
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        
+        #welcomeScreen.show {
+            display: flex;
+        }
+        
+        .welcome-title {
+            font-size: 48px;
+            color: white;
+            text-shadow: 0 0 20px rgba(255, 255, 255, 0.5);
+            margin-bottom: 40px;
+        }
+        
+        .test-button {
+            padding: 15px 30px;
+            font-size: 18px;
+            background: linear-gradient(45deg, #4CAF50, #81C784);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .test-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(76, 175, 80, 0.4);
+        }
+    </style>
+</head>
+<body>
+    <!-- 加载页面 -->
+    <div id="loadingScreen">
+        <div class="loading-container">
+            <div class="loading-logo">Tiny Galaxy Clash</div>
+            <div class="loading-text" id="loadingText">正在初始化游戏<span class="loading-dots"></span></div>
+            <div class="progress-bar-container">
+                <div class="progress-bar" id="progressBar"></div>
+            </div>
+            <div class="progress-percentage" id="progressPercentage">0%</div>
+            <div class="loading-details" id="loadingDetails">准备加载资源...</div>
+        </div>
+    </div>
+
+    <!-- 欢迎界面 -->
+    <div id="welcomeScreen">
+        <h1 class="welcome-title">游戏加载完成！</h1>
+        <button class="test-button" onclick="window.location.href='index.html'">进入游戏</button>
+    </div>
+
+    <script>
+        // 模拟资源加载
+        function simulateLoading() {
+            const progressBar = document.getElementById('progressBar');
+            const progressPercentage = document.getElementById('progressPercentage');
+            const loadingDetails = document.getElementById('loadingDetails');
+            const loadingScreen = document.getElementById('loadingScreen');
+            const welcomeScreen = document.getElementById('welcomeScreen');
+            
+            const resources = [
+                '欢迎界面背景',
+                '游戏背景',
+                '爆炸特效',
+                '背景音乐',
+                '射击音效',
+                '游戏核心脚本'
+            ];
+            
+            let currentResource = 0;
+            
+            function loadNextResource() {
+                if (currentResource < resources.length) {
+                    const progress = Math.round(((currentResource + 1) / resources.length) * 100);
+                    
+                    progressBar.style.width = progress + '%';
+                    progressPercentage.textContent = progress + '%';
+                    loadingDetails.textContent = `✓ ${resources[currentResource]}`;
+                    
+                    currentResource++;
+                    
+                    // 随机延迟模拟真实加载时间
+                    setTimeout(loadNextResource, Math.random() * 800 + 200);
+                } else {
+                    // 加载完成
+                    setTimeout(() => {
+                        loadingScreen.classList.add('hidden');
+                        setTimeout(() => {
+                            loadingScreen.style.display = 'none';
+                            welcomeScreen.classList.add('show');
+                        }, 500);
+                    }, 500);
+                }
+            }
+            
+            // 开始加载
+            setTimeout(loadNextResource, 500);
+        }
+        
+        // 页面加载完成后开始模拟
+        document.addEventListener('DOMContentLoaded', simulateLoading);
+    </script>
+</body>
+</html>

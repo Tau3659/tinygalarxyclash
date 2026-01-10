@@ -92,7 +92,7 @@ class ExplosionManager {
             console.log('爆炸雪碧图已加载');
         };
         img.onerror = () => {
-            console.log('爆炸雪碧图加载失败，使用程序化效果');
+            console.warn('爆炸雪碧图加载失败，爆炸效果将被禁用');
         };
         img.src = 'assets/images/ship_explosion.png';
     }
@@ -150,7 +150,7 @@ class ExplosionManager {
         const elapsed = currentTime - explosion.startTime;
         const progress = elapsed / explosion.duration;
         
-        if (progress >= 1) return;
+        if (progress >= 1 || !this.spriteImage) return;
         
         const x = explosion.x;
         const y = explosion.y;
@@ -158,15 +158,7 @@ class ExplosionManager {
         const scale = explosion.scale;
         
         ctx.save();
-        
-        if (this.spriteImage) {
-            // 使用雪碧图渲染
-            this.renderSpriteExplosion(ctx, explosion, progress);
-        } else {
-            // 使用程序化光晕效果作为后备
-            this.renderProgrammaticExplosion(ctx, explosion, progress);
-        }
-        
+        this.renderSpriteExplosion(ctx, explosion, progress);
         ctx.restore();
     }
     
@@ -207,39 +199,6 @@ class ExplosionManager {
         // 恢复默认混合模式和滤镜
         ctx.globalCompositeOperation = 'source-over';
         ctx.filter = 'none';
-    }
-    
-    // 程序化爆炸效果（后备方案）
-    renderProgrammaticExplosion(ctx, explosion, progress) {
-        const x = explosion.x;
-        const y = explosion.y;
-        const color = explosion.color;
-        const scale = explosion.scale;
-        
-        // 简化的光晕效果
-        const maxRadius = 35 * scale; // 增大到35px，与雪碧图效果匹配
-        let currentRadius, alpha;
-        
-        if (progress < 0.3) {
-            const expandProgress = progress / 0.3;
-            currentRadius = maxRadius * (1 - Math.pow(1 - expandProgress, 1.5));
-            alpha = 1.0 - expandProgress * 0.1;
-        } else {
-            const fadeProgress = (progress - 0.3) / 0.7;
-            currentRadius = maxRadius * (1 + fadeProgress * 0.05);
-            alpha = 0.9 * (1 - fadeProgress * fadeProgress * fadeProgress);
-        }
-        
-        // 主光晕
-        const gradient = ctx.createRadialGradient(x, y, 0, x, y, currentRadius);
-        gradient.addColorStop(0, '#ffffff' + Math.floor(alpha * 255).toString(16).padStart(2, '0'));
-        gradient.addColorStop(0.3, color + Math.floor(alpha * 200).toString(16).padStart(2, '0'));
-        gradient.addColorStop(1, 'transparent');
-        
-        ctx.fillStyle = gradient;
-        ctx.beginPath();
-        ctx.arc(x, y, currentRadius, 0, Math.PI * 2);
-        ctx.fill();
     }
     
     // 获取色相旋转角度
@@ -382,7 +341,14 @@ class DroneGame {
         this.gameMode = '1v1';
         this.playerColor = '#00ff00';
         this.aiDifficulty = 'easy'; // 默认简单难度
-        this.gameState = 'welcome'; // welcome, playing, gameOver
+        this.gameState = 'welcome'; // welcome, playing, paused, gameOver
+        this.isPaused = false;
+        this.isModalOpen = false; // 新增：弹窗状态
+        this.pauseStartTime = 0; // 当前暂停开始时间
+        this.pauseTimer = null; // 暂停计时器
+        this.selectedDebris = null; // 选中的资源块，用于显示详细信息
+        this.lastDebrisClickTime = 0; // 上次点击资源的时间
+        this.lastClickedDebris = null; // 上次点击的资源
         this.winner = null;
         this.gameStartTime = 0;
         
@@ -541,6 +507,147 @@ class DroneGame {
         
         // 更新UI
         this.updateUI();
+    }
+    
+    // 暂停/恢复游戏
+    togglePause() {
+        if (this.gameState !== 'playing' || this.isModalOpen) return;
+        
+        if (!this.isPaused) {
+            // 暂停游戏
+            this.showPauseModal();
+        } else {
+            // 恢复游戏
+            this.hidePauseModal();
+        }
+    }
+    
+    // 显示暂停弹窗
+    showPauseModal() {
+        const modal = document.getElementById('pauseModal');
+        if (modal) {
+            modal.style.display = 'block';
+            this.isPaused = true;
+            this.isModalOpen = true;
+            this.pauseStartTime = Date.now();
+            
+            // 开始暂停计时
+            this.startPauseTimer();
+            
+            // 更新暂停按钮状态
+            const pauseBtn = document.getElementById('pauseGame');
+            if (pauseBtn) {
+                pauseBtn.classList.add('paused');
+                pauseBtn.querySelector('.pause-icon').textContent = '▶️';
+                pauseBtn.querySelector('.pause-text').textContent = '继续';
+            }
+        }
+    }
+    
+    // 隐藏暂停弹窗
+    hidePauseModal() {
+        const modal = document.getElementById('pauseModal');
+        if (modal) {
+            modal.style.display = 'none';
+            this.isPaused = false;
+            this.isModalOpen = false;
+            
+            // 停止暂停计时
+            this.stopPauseTimer();
+            
+            // 重置计时器显示
+            const timerElement = document.getElementById('pauseTimer');
+            if (timerElement) {
+                timerElement.textContent = '暂停时间: 00:00';
+            }
+            
+            // 更新暂停按钮状态
+            const pauseBtn = document.getElementById('pauseGame');
+            if (pauseBtn) {
+                pauseBtn.classList.remove('paused');
+                pauseBtn.querySelector('.pause-icon').textContent = '⏸️';
+                pauseBtn.querySelector('.pause-text').textContent = '暂停';
+            }
+        }
+    }
+    
+    // 开始暂停计时
+    startPauseTimer() {
+        this.stopPauseTimer(); // 确保没有重复的计时器
+        
+        // 重置计时器显示为00:00
+        const timerElement = document.getElementById('pauseTimer');
+        if (timerElement) {
+            timerElement.textContent = '暂停时间: 00:00';
+        }
+        
+        this.pauseTimer = setInterval(() => {
+            const elapsed = Math.floor((Date.now() - this.pauseStartTime) / 1000);
+            const minutes = Math.floor(elapsed / 60);
+            const seconds = elapsed % 60;
+            const timeStr = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            
+            if (timerElement) {
+                timerElement.textContent = `暂停时间: ${timeStr}`;
+            }
+        }, 1000);
+    }
+    
+    // 停止暂停计时
+    stopPauseTimer() {
+        if (this.pauseTimer) {
+            clearInterval(this.pauseTimer);
+            this.pauseTimer = null;
+        }
+    }
+    
+    // 投降游戏
+    surrenderGame() {
+        if (this.gameState !== 'playing' || this.isModalOpen) return;
+        
+        // 显示投降确认弹窗
+        this.showSurrenderModal();
+    }
+    
+    // 显示投降确认弹窗
+    showSurrenderModal() {
+        const modal = document.getElementById('surrenderModal');
+        if (modal) {
+            modal.style.display = 'block';
+            this.isModalOpen = true;
+        }
+    }
+    
+    // 隐藏投降确认弹窗
+    hideSurrenderModal() {
+        const modal = document.getElementById('surrenderModal');
+        if (modal) {
+            modal.style.display = 'none';
+            this.isModalOpen = false;
+        }
+    }
+    
+    // 确认投降
+    confirmSurrender() {
+        console.log('玩家确认投降');
+        
+        // 隐藏弹窗
+        this.hideSurrenderModal();
+        
+        // 确保玩家数据存在
+        if (this.players.length === 0) {
+            console.error('玩家数据不存在，无法显示结算界面');
+            return;
+        }
+        
+        // 设置游戏状态为失败
+        this.gameState = 'gameOver';
+        this.isPaused = false;
+        
+        // 设置获胜者为AI
+        this.winner = 'ai';
+        
+        console.log('游戏结束，玩家投降失败');
     }
     
     // 设置画布充满整个窗口
@@ -1010,6 +1117,25 @@ class DroneGame {
                 });
             }
             
+            // 处理资源选择（用于显示详细信息）
+            if (clickedTarget && clickedTarget.constructor.name === 'Debris') {
+                // 检查是否是双击或长按（用于显示详细信息）
+                const now = Date.now();
+                if (this.lastDebrisClickTime && (now - this.lastDebrisClickTime < 300) && 
+                    this.lastClickedDebris === clickedTarget) {
+                    // 双击资源 - 显示/隐藏详细信息
+                    if (this.selectedDebris === clickedTarget) {
+                        this.selectedDebris = null; // 取消选择
+                    } else {
+                        this.selectedDebris = clickedTarget; // 选择资源
+                    }
+                    console.log(`${this.selectedDebris ? '显示' : '隐藏'}资源详细信息`);
+                    return; // 不执行攻击命令
+                }
+                this.lastDebrisClickTime = now;
+                this.lastClickedDebris = clickedTarget;
+            }
+            
             if (clickedTarget) {
                 // 选中攻击目标 - 立即响应玩家操作
                 const currentTime = Date.now();
@@ -1035,6 +1161,9 @@ class DroneGame {
                 this.players[0].rallyPoint = safePosition;
                 this.players[0].lastRallyTime = Date.now(); // 记录集结时间
                 const currentTime = Date.now();
+                
+                // 清除资源选择状态
+                this.selectedDebris = null;
                 
                 // 重置所有无人机的集结状态和玩家指定目标
                 this.players[0].drones.forEach(drone => {
@@ -1094,6 +1223,83 @@ class DroneGame {
         addButtonEvents('upgradeMoveSpeed', 'moveSpeed');
         addButtonEvents('upgradeHealth', 'health');
         addButtonEvents('upgradeBase', 'baseHealth');
+        
+        // 游戏控制按钮事件
+        const pauseBtn = document.getElementById('pauseGame');
+        const surrenderBtn = document.getElementById('surrenderGame');
+        
+        if (pauseBtn) {
+            pauseBtn.addEventListener('click', () => {
+                this.togglePause();
+            });
+            pauseBtn.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                this.togglePause();
+            });
+        }
+        
+        if (surrenderBtn) {
+            surrenderBtn.addEventListener('click', () => {
+                this.surrenderGame();
+            });
+            surrenderBtn.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                this.surrenderGame();
+            });
+        }
+        
+        // 投降弹窗按钮事件
+        const confirmSurrenderBtn = document.getElementById('confirmSurrender');
+        const cancelSurrenderBtn = document.getElementById('cancelSurrender');
+        
+        if (confirmSurrenderBtn) {
+            confirmSurrenderBtn.addEventListener('click', () => {
+                this.confirmSurrender();
+            });
+            confirmSurrenderBtn.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                this.confirmSurrender();
+            });
+        }
+        
+        if (cancelSurrenderBtn) {
+            cancelSurrenderBtn.addEventListener('click', () => {
+                this.hideSurrenderModal();
+            });
+            cancelSurrenderBtn.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                this.hideSurrenderModal();
+            });
+        }
+        
+        // 暂停弹窗按钮事件
+        const resumeGameBtn = document.getElementById('resumeGame');
+        
+        if (resumeGameBtn) {
+            resumeGameBtn.addEventListener('click', () => {
+                this.hidePauseModal();
+            });
+            resumeGameBtn.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                this.hidePauseModal();
+            });
+        }
+        
+        // 阻止弹窗内容区域的点击事件冒泡（防止意外关闭）
+        const surrenderDialog = document.querySelector('.surrender-dialog');
+        const pauseDialog = document.querySelector('.pause-dialog');
+        
+        if (surrenderDialog) {
+            surrenderDialog.addEventListener('click', (e) => {
+                e.stopPropagation();
+            });
+        }
+        
+        if (pauseDialog) {
+            pauseDialog.addEventListener('click', (e) => {
+                e.stopPropagation();
+            });
+        }
     }
     
     upgradeAttribute(attribute) {
@@ -1151,6 +1357,9 @@ class DroneGame {
         this.winner = null;
         this.returnButton = null;
         
+        // 停止暂停计时器
+        this.stopPauseTimer();
+        
         // 清理游戏数据
         this.players = [];
         this.debris = [];
@@ -1178,8 +1387,19 @@ class DroneGame {
         const deltaTime = currentTime - this.lastTime;
         this.lastTime = currentTime;
         
-        if (this.gameState === 'playing') {
+        if (this.gameState === 'playing' && !this.isPaused && !this.isModalOpen) {
+            // 正常游戏状态：更新和渲染
             this.update(deltaTime);
+            this.render();
+        } else if (this.gameState === 'playing' && (this.isPaused || this.isModalOpen)) {
+            // 暂停状态或弹窗打开：只渲染，不更新游戏逻辑
+            this.render();
+            if (this.isPaused && !this.isModalOpen) {
+                // 只有纯暂停时才显示暂停覆盖层
+                this.renderPauseOverlay();
+            }
+        } else if (this.gameState === 'gameOver') {
+            // 游戏结束状态：渲染游戏画面和结束界面
             this.render();
         } else if (this.gameState === 'welcome') {
             // 欢迎界面不需要渲染游戏内容
@@ -2884,7 +3104,9 @@ class DroneGame {
         
         // 绘制飞船碎片
         for (let i = 0; i < this.debris.length; i++) {
-            this.debris[i].render(this.ctx);
+            const debris = this.debris[i];
+            const showDetailedInfo = (this.selectedDebris === debris);
+            debris.render(this.ctx, showDetailedInfo);
         }
         
         // 绘制基地
@@ -2979,6 +3201,25 @@ class DroneGame {
             this.ctx.setLineDash([]);
         }
         
+        // 显示资源检查提示（仅在有资源时显示）
+        if (this.debris.length > 0 && this.gameState === 'playing') {
+            this.ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+            this.ctx.font = '12px Arial';
+            this.ctx.textAlign = 'left';
+            const tipText = '提示：双击资源查看详细属性';
+            const tipX = 10;
+            const tipY = this.canvas.height - 20;
+            
+            // 绘制半透明背景
+            const textWidth = this.ctx.measureText(tipText).width;
+            this.ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+            this.ctx.fillRect(tipX - 5, tipY - 15, textWidth + 10, 18);
+            
+            // 绘制提示文字
+            this.ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+            this.ctx.fillText(tipText, tipX, tipY);
+        }
+        
         // 绘制游戏结束信息
         if (this.gameState === 'gameOver') {
             this.ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
@@ -3004,16 +3245,25 @@ class DroneGame {
             
             // 显示游戏统计信息
             const player = this.players[0];
-            const gameTime = Math.floor((Date.now() - this.gameStartTime) / 1000);
-            const minutes = Math.floor(gameTime / 60);
-            const seconds = gameTime % 60;
-            const timeStr = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-            
-            this.ctx.fillStyle = '#fff';
-            this.ctx.font = '24px Arial';
-            this.ctx.fillText(`游戏时间: ${timeStr}`, this.canvas.width / 2, this.canvas.height / 2 - 20);
-            this.ctx.fillText(`击杀数: ${player.killCount || 0}`, this.canvas.width / 2, this.canvas.height / 2 + 10);
-            this.ctx.fillText(`最终资源: ${player.resources || 0}`, this.canvas.width / 2, this.canvas.height / 2 + 40);
+            if (player) {
+                const gameTime = Math.floor((Date.now() - this.gameStartTime) / 1000);
+                const minutes = Math.floor(gameTime / 60);
+                const seconds = gameTime % 60;
+                const timeStr = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                
+                this.ctx.fillStyle = '#fff';
+                this.ctx.font = '24px Arial';
+                this.ctx.fillText(`游戏时间: ${timeStr}`, this.canvas.width / 2, this.canvas.height / 2 - 20);
+                this.ctx.fillText(`击杀数: ${player.killCount || 0}`, this.canvas.width / 2, this.canvas.height / 2 + 10);
+                this.ctx.fillText(`最终资源: ${player.resources || 0}`, this.canvas.width / 2, this.canvas.height / 2 + 40);
+            } else {
+                // 如果没有玩家数据，显示默认信息
+                this.ctx.fillStyle = '#fff';
+                this.ctx.font = '24px Arial';
+                this.ctx.fillText(`游戏时间: 00:00`, this.canvas.width / 2, this.canvas.height / 2 - 20);
+                this.ctx.fillText(`击杀数: 0`, this.canvas.width / 2, this.canvas.height / 2 + 10);
+                this.ctx.fillText(`最终资源: 0`, this.canvas.width / 2, this.canvas.height / 2 + 40);
+            }
             
             // 绘制返回按钮
             const buttonWidth = 200;
@@ -3043,6 +3293,24 @@ class DroneGame {
                 height: buttonHeight
             };
         }
+    }
+    
+    // 渲染暂停覆盖层
+    renderPauseOverlay() {
+        // 半透明黑色覆盖层
+        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        
+        // 暂停文字
+        this.ctx.fillStyle = '#fff';
+        this.ctx.font = '48px Arial';
+        this.ctx.textAlign = 'center';
+        this.ctx.fillText('游戏已暂停', this.canvas.width / 2, this.canvas.height / 2 - 20);
+        
+        // 提示文字
+        this.ctx.font = '24px Arial';
+        this.ctx.fillStyle = '#ccc';
+        this.ctx.fillText('点击继续按钮恢复游戏', this.canvas.width / 2, this.canvas.height / 2 + 30);
     }
     
     updateUI() {
@@ -4349,7 +4617,7 @@ class Debris {
         return this.health <= 0; // 返回是否被摧毁
     }
     
-    render(ctx) {
+    render(ctx, showDetailedInfo = false) {
         this.rotation += 0.005; // 减慢旋转速度
         
         ctx.save();
@@ -4382,7 +4650,7 @@ class Debris {
         
         ctx.restore();
         
-        // 显示资源点数和生命值
+        // 显示资源点数
         ctx.fillStyle = '#fff';
         ctx.font = 'bold 12px Arial';
         ctx.textAlign = 'center';
@@ -4413,6 +4681,78 @@ class Debris {
             ctx.lineWidth = 1;
             ctx.strokeRect(barX, barY, barWidth, barHeight);
         }
+        
+        // 显示详细属性信息
+        if (showDetailedInfo) {
+            this.renderDetailedInfo(ctx);
+        }
+    }
+    
+    // 渲染详细属性信息
+    renderDetailedInfo(ctx) {
+        const infoLines = [
+            `资源点数: ${this.points}`,
+            `生命值: ${this.health}/${this.maxHealth}`,
+            `大小: ${Math.round(this.size)}`,
+            `位置: (${Math.round(this.x)}, ${Math.round(this.y)})`
+        ];
+        
+        // 计算信息面板尺寸
+        ctx.font = '11px Arial';
+        const lineHeight = 14;
+        const padding = 8;
+        const maxWidth = Math.max(...infoLines.map(line => ctx.measureText(line).width));
+        const panelWidth = maxWidth + padding * 2;
+        const panelHeight = infoLines.length * lineHeight + padding * 2;
+        
+        // 确定面板位置（避免超出画布边界）
+        let panelX = this.x + this.size + 10;
+        let panelY = this.y - panelHeight / 2;
+        
+        // 边界检查
+        const canvas = ctx.canvas;
+        if (panelX + panelWidth > canvas.width) {
+            panelX = this.x - this.size - panelWidth - 10;
+        }
+        if (panelY < 0) {
+            panelY = 0;
+        }
+        if (panelY + panelHeight > canvas.height) {
+            panelY = canvas.height - panelHeight;
+        }
+        
+        // 绘制信息面板背景
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+        ctx.fillRect(panelX, panelY, panelWidth, panelHeight);
+        
+        // 绘制边框
+        ctx.strokeStyle = '#666';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(panelX, panelY, panelWidth, panelHeight);
+        
+        // 绘制信息文本
+        ctx.fillStyle = '#fff';
+        ctx.textAlign = 'left';
+        
+        infoLines.forEach((line, index) => {
+            ctx.fillText(line, panelX + padding, panelY + padding + (index + 1) * lineHeight - 2);
+        });
+        
+        // 绘制指向资源的连接线
+        ctx.strokeStyle = '#666';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([2, 2]);
+        ctx.beginPath();
+        ctx.moveTo(this.x, this.y);
+        ctx.lineTo(panelX, panelY + panelHeight / 2);
+        ctx.stroke();
+        ctx.setLineDash([]);
+    }
+    
+    // 检查点击是否在资源范围内
+    isPointInside(x, y) {
+        const distance = Math.sqrt((x - this.x) ** 2 + (y - this.y) ** 2);
+        return distance <= this.size;
     }
 }
 

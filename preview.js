@@ -448,43 +448,9 @@ function renderEffects() {
     const width = canvas.offsetWidth;
     const height = canvas.offsetHeight;
     
-    // 星空背景
-    const gradient = ctx.createRadialGradient(
-        width / 2, height / 2, 0,
-        width / 2, height / 2, Math.max(width, height)
-    );
-    gradient.addColorStop(0, '#001122');
-    gradient.addColorStop(0.5, '#000814');
-    gradient.addColorStop(1, '#000000');
-    
-    ctx.fillStyle = gradient;
+    // 简单的深色背景
+    ctx.fillStyle = '#000814';
     ctx.fillRect(0, 0, width, height);
-    
-    // 绘制星星
-    const time = Date.now() * 0.001;
-    for (let i = 0; i < 30; i++) {
-        const x = (i * 37) % width;
-        const y = (i * 73) % height;
-        const size = 0.5 + (i % 3);
-        const twinkle = Math.sin(time + i * 0.5) * 0.3 + 0.7;
-        
-        ctx.fillStyle = `rgba(255, 255, 255, ${twinkle})`;
-        ctx.beginPath();
-        ctx.arc(x, y, size, 0, Math.PI * 2);
-        ctx.fill();
-        
-        // 大星星的十字光
-        if (size > 2) {
-            ctx.strokeStyle = `rgba(255, 255, 255, ${twinkle * 0.3})`;
-            ctx.lineWidth = 0.5;
-            ctx.beginPath();
-            ctx.moveTo(x - size * 2, y);
-            ctx.lineTo(x + size * 2, y);
-            ctx.moveTo(x, y - size * 2);
-            ctx.lineTo(x, y + size * 2);
-            ctx.stroke();
-        }
-    }
 }
 
 // 渲染UI元素预览
@@ -615,10 +581,6 @@ function damageDebris() {
     console.log('资源碎片受伤效果');
 }
 
-function showStarfield() {
-    console.log('星空效果展示');
-}
-
 function showExplosion() {
     console.log('爆炸效果展示');
 }
@@ -652,18 +614,6 @@ function renderExplosions() {
     ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, width, height);
     
-    // 绘制一些背景星星
-    for (let i = 0; i < 15; i++) {
-        const x = (i * 37) % width;
-        const y = (i * 73) % height;
-        const size = 0.5 + (i % 2);
-        
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
-        ctx.beginPath();
-        ctx.arc(x, y, size, 0, Math.PI * 2);
-        ctx.fill();
-    }
-    
     // 更新和渲染所有爆炸效果
     const currentTime = Date.now();
     
@@ -694,77 +644,56 @@ function renderSingleExplosion(ctx, explosion, currentTime) {
     const elapsed = currentTime - explosion.startTime;
     const progress = elapsed / explosion.duration;
     
-    if (progress >= 1) return; // 爆炸已结束
+    if (progress >= 1 || !previewState.spriteImage) return;
     
     const x = explosion.x;
     const y = explosion.y;
-    const maxRadius = explosion.maxRadius;
     const color = explosion.color;
     
-    // 计算当前半径和透明度
-    // 0-0.3: 从小到大快速扩张
-    // 0.3-1.0: 快速消失
-    let currentRadius, alpha;
-    
-    if (progress < 0.3) {
-        // 扩张阶段 - 更快的扩张
-        const expandProgress = progress / 0.3;
-        currentRadius = maxRadius * (1 - Math.pow(1 - expandProgress, 1.5));
-        alpha = 1.0 - expandProgress * 0.1; // 从1.0降到0.9
-    } else {
-        // 消失阶段 - 更快消失
-        const fadeProgress = (progress - 0.3) / 0.7;
-        currentRadius = maxRadius * (1 + fadeProgress * 0.05); // 稍微继续扩大
-        alpha = 0.9 * (1 - fadeProgress * fadeProgress * fadeProgress); // 更快消失
-    }
-    
-    // 绘制多层光晕效果
     ctx.save();
     
-    // 外层光晕 - 最大最淡
-    const outerGradient = ctx.createRadialGradient(
-        x, y, 0,
-        x, y, currentRadius * 1.5
-    );
-    outerGradient.addColorStop(0, color + Math.floor(alpha * 80).toString(16).padStart(2, '0'));
-    outerGradient.addColorStop(0.3, color + Math.floor(alpha * 40).toString(16).padStart(2, '0'));
-    outerGradient.addColorStop(1, 'transparent');
+    // 使用雪碧图渲染
+    const frameIndex = Math.floor(progress * previewState.spriteFrameCount);
+    const clampedFrameIndex = Math.min(frameIndex, previewState.spriteFrameCount - 1);
     
-    ctx.fillStyle = outerGradient;
-    ctx.beginPath();
-    ctx.arc(x, y, currentRadius * 1.5, 0, Math.PI * 2);
-    ctx.fill();
+    // 使用滤色混合模式
+    ctx.globalCompositeOperation = 'screen';
     
-    // 中层光晕 - 中等亮度
-    const middleGradient = ctx.createRadialGradient(
-        x, y, 0,
-        x, y, currentRadius
-    );
-    middleGradient.addColorStop(0, color + Math.floor(alpha * 120).toString(16).padStart(2, '0'));
-    middleGradient.addColorStop(0.5, color + Math.floor(alpha * 80).toString(16).padStart(2, '0'));
-    middleGradient.addColorStop(1, 'transparent');
+    // 应用色相旋转
+    const hueRotation = getHueRotation(color);
+    if (hueRotation !== 0) {
+        ctx.filter = `hue-rotate(${hueRotation}deg)`;
+    }
     
-    ctx.fillStyle = middleGradient;
-    ctx.beginPath();
-    ctx.arc(x, y, currentRadius, 0, Math.PI * 2);
-    ctx.fill();
+    // 计算源坐标和绘制尺寸
+    const sx = clampedFrameIndex * previewState.spriteFrameSize;
+    const sy = 0;
+    const sw = previewState.spriteFrameSize;
+    const sh = previewState.spriteFrameSize;
     
-    // 内层核心 - 最亮，增强中心亮度
-    const coreGradient = ctx.createRadialGradient(
-        x, y, 0,
-        x, y, currentRadius * 0.3
-    );
-    coreGradient.addColorStop(0, '#ffffff' + 'FF'); // 中心完全不透明的白色
-    coreGradient.addColorStop(0.2, '#ffffff' + Math.floor(alpha * 240).toString(16).padStart(2, '0'));
-    coreGradient.addColorStop(0.5, color + Math.floor(alpha * 220).toString(16).padStart(2, '0'));
-    coreGradient.addColorStop(1, 'transparent');
+    const drawSize = previewState.spriteFrameSize * 1.5;
+    const dx = x - drawSize / 2;
+    const dy = y - drawSize / 2;
     
-    ctx.fillStyle = coreGradient;
-    ctx.beginPath();
-    ctx.arc(x, y, currentRadius * 0.3, 0, Math.PI * 2);
-    ctx.fill();
+    // 绘制雪碧图帧
+    ctx.drawImage(previewState.spriteImage, sx, sy, sw, sh, dx, dy, drawSize, drawSize);
+    
+    // 恢复默认设置
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.filter = 'none';
     
     ctx.restore();
+}
+
+// 获取色相旋转角度
+function getHueRotation(targetColor) {
+    const colorMap = {
+        '#00ff00': -60,  // 绿色
+        '#0099ff': 0,    // 蓝色
+        '#ff0000': 140,  // 红色
+        '#ffba00': 180   // 黄色
+    };
+    return colorMap[targetColor] || 0;
 }
 
 function triggerExplosion(colorType) {
@@ -817,18 +746,6 @@ function renderSpriteExplosions() {
     
     ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, width, height);
-    
-    // 绘制一些背景星星
-    for (let i = 0; i < 15; i++) {
-        const x = (i * 37) % width;
-        const y = (i * 73) % height;
-        const size = 0.5 + (i % 2);
-        
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
-        ctx.beginPath();
-        ctx.arc(x, y, size, 0, Math.PI * 2);
-        ctx.fill();
-    }
     
     // 同时创建四种颜色的爆炸效果
     const currentTime = Date.now();

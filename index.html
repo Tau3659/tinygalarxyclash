@@ -18,6 +18,97 @@
             overflow: hidden;
         }
         
+        /* 加载页面样式 */
+        #loadingScreen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #0a0a1a 0%, #1a1a2e 50%, #16213e 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+            opacity: 1;
+            transition: opacity 0.5s ease-out;
+        }
+        
+        #loadingScreen.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+        
+        .loading-logo {
+            font-size: 48px;
+            font-weight: bold;
+            color: #fff;
+            text-shadow: 0 0 20px rgba(255, 255, 255, 0.5);
+            margin-bottom: 40px;
+        }
+        
+        .loading-container {
+            width: 400px;
+            max-width: 80vw;
+            text-align: center;
+        }
+        
+        .loading-text {
+            font-size: 18px;
+            color: #ccc;
+            margin-bottom: 20px;
+            min-height: 24px;
+        }
+        
+        .progress-bar-container {
+            width: 100%;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 15px;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #4CAF50, #81C784);
+            border-radius: 4px;
+            width: 0%;
+            transition: width 0.3s ease;
+            box-shadow: 0 0 10px rgba(76, 175, 80, 0.5);
+        }
+        
+        .progress-percentage {
+            font-size: 16px;
+            color: #4CAF50;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        
+        .loading-details {
+            font-size: 14px;
+            color: #888;
+            min-height: 20px;
+        }
+        
+        /* 移动端适配 */
+        @media (max-width: 768px) {
+            .loading-logo {
+                font-size: 36px;
+                margin-bottom: 30px;
+            }
+            
+            .loading-container {
+                width: 300px;
+            }
+            
+            .loading-text {
+                font-size: 16px;
+            }
+        }
+        
         #welcomeScreen {
             position: fixed;
             top: 0;
@@ -28,13 +119,17 @@
             background-size: cover;
             background-position: center;
             background-repeat: no-repeat;
-            display: flex;
+            display: none; /* 初始隐藏，加载完成后显示 */
             flex-direction: column;
             justify-content: center;
             align-items: center;
             z-index: 1000;
             overflow: hidden;
             transition: background-image 0.5s ease-in-out; /* 平滑过渡 */
+        }
+        
+        #welcomeScreen.show {
+            display: flex;
         }
         
         /* 背景图加载完成后的样式 */
@@ -356,91 +451,17 @@
             box-shadow: 0 5px 15px rgba(244, 67, 54, 0.4);
         }
         
-        /* 星星闪烁效果 - 增强光晕 */
-        .stars-container {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            z-index: 1;
-        }
-        
-        .star {
-            position: absolute;
-            background: radial-gradient(circle, #fff 0%, #87ceeb 40%, transparent 70%);
-            border-radius: 50%;
-            animation: twinkle 3s ease-in-out infinite;
-        }
-        
-        @keyframes twinkle {
-            0%, 100% { 
-                opacity: 0.4;
-                transform: scale(1);
-                box-shadow: 
-                    0 0 6px #fff,
-                    0 0 12px #87ceeb,
-                    0 0 18px rgba(135, 206, 235, 0.5),
-                    0 0 24px rgba(135, 206, 235, 0.3);
-            }
-            50% { 
-                opacity: 1;
-                transform: scale(1.3);
-                box-shadow: 
-                    0 0 10px #fff,
-                    0 0 20px #87ceeb,
-                    0 0 30px rgba(135, 206, 235, 0.8),
-                    0 0 40px rgba(135, 206, 235, 0.6),
-                    0 0 50px rgba(135, 206, 235, 0.4);
-            }
-        }
-        
-        .particles {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            z-index: 2;
-        }
-        
-        .particle {
-            position: absolute;
-            background: rgba(135, 206, 235, 0.1);
-            border-radius: 50%;
-            animation: float 6s ease-in-out infinite;
-        }
-        
-        @keyframes float {
-            0%, 100% { transform: translateY(0px) rotate(0deg); opacity: 0.1; }
-            50% { transform: translateY(-20px) rotate(180deg); opacity: 0.3; }
-        }
-        
         .welcome-title {
             font-size: 48px;
             font-weight: bold;
             margin-bottom: 30px;
             text-shadow: 0 0 20px #00ffff, 0 0 40px #00ffff;
-            animation: glow 2s ease-in-out infinite alternate;
             z-index: 10;
             position: relative;
             background: linear-gradient(45deg, #00ffff, #87ceeb, #fff);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
-        }
-        
-        @keyframes glow {
-            from { 
-                text-shadow: 0 0 20px #00ffff, 0 0 40px #00ffff;
-                filter: brightness(1);
-            }
-            to { 
-                text-shadow: 0 0 30px #00ffff, 0 0 50px #00ffff, 0 0 60px #87ceeb;
-                filter: brightness(1.2);
-            }
         }
         
         .mode-selection {
@@ -638,8 +659,8 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 8px; /* 增加行间距 */
-            padding: 3px 0; /* 增加内边距 */
+            margin-bottom: 4px; /* 减小行间距 */
+            padding: 1px 0; /* 减小内边距 */
         }
         
         .info-row:last-child {
@@ -743,6 +764,307 @@
             font-weight: 600;
             text-shadow: 0 0 6px rgba(255, 215, 0, 0.3);
             font-size: 14px; /* 明确设置字体大小 */
+        }
+        
+        /* 游戏控制按钮样式 */
+        .game-control-panel .upgrade-buttons-container {
+            display: flex;
+            gap: 10px;
+            width: 100%;
+        }
+        
+        .control-btn {
+            background: linear-gradient(45deg, rgba(74, 85, 104, 0.8), rgba(45, 55, 72, 0.8));
+            color: #e2e8f0;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 8px 12px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            backdrop-filter: blur(5px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            flex: 1;
+            min-height: 36px;
+        }
+        
+        .control-btn:hover {
+            background: linear-gradient(45deg, rgba(74, 85, 104, 1), rgba(45, 55, 72, 1));
+            border-color: rgba(100, 200, 255, 0.3);
+            transform: translateY(-1px);
+        }
+        
+        .control-btn:active {
+            transform: translateY(0);
+        }
+        
+        .pause-btn {
+            background: linear-gradient(45deg, rgba(59, 130, 246, 0.8), rgba(37, 99, 235, 0.8));
+        }
+        
+        .pause-btn:hover {
+            background: linear-gradient(45deg, rgba(59, 130, 246, 1), rgba(37, 99, 235, 1));
+        }
+        
+        .pause-btn.paused {
+            background: linear-gradient(45deg, rgba(34, 197, 94, 0.8), rgba(22, 163, 74, 0.8));
+        }
+        
+        .pause-btn.paused:hover {
+            background: linear-gradient(45deg, rgba(34, 197, 94, 1), rgba(22, 163, 74, 1));
+        }
+        
+        .surrender-btn {
+            background: linear-gradient(45deg, rgba(239, 68, 68, 0.8), rgba(220, 38, 38, 0.8));
+        }
+        
+        .surrender-btn:hover {
+            background: linear-gradient(45deg, rgba(239, 68, 68, 1), rgba(220, 38, 38, 1));
+        }
+        
+        .pause-icon, .surrender-icon {
+            font-size: 14px;
+        }
+        
+        .pause-text, .surrender-text {
+            font-size: 13px;
+        }
+        
+        /* 投降确认弹窗样式 */
+        .surrender-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: none;
+            z-index: 10000;
+        }
+        
+        .surrender-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.2);
+            cursor: default; /* 明确显示这里不可点击 */
+        }
+        
+        .surrender-dialog {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: linear-gradient(135deg, rgba(30, 30, 50, 0.95), rgba(50, 50, 80, 0.95));
+            backdrop-filter: blur(20px);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+            padding: 30px;
+            min-width: 320px;
+            max-width: 90vw;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+            text-align: center;
+            cursor: default; /* 确保弹窗内容区域有正确的光标 */
+        }
+        
+        .surrender-title {
+            color: #ff6b6b;
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            text-shadow: 0 0 10px rgba(255, 107, 107, 0.3);
+        }
+        
+        .surrender-message {
+            color: #e2e8f0;
+            font-size: 16px;
+            line-height: 1.5;
+            margin-bottom: 30px;
+        }
+        
+        .surrender-buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+        }
+        
+        .surrender-confirm-btn, .surrender-cancel-btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            min-width: 100px;
+        }
+        
+        .surrender-confirm-btn {
+            background: linear-gradient(45deg, #ff6b6b, #ee5a52);
+            color: white;
+            box-shadow: 0 4px 15px rgba(255, 107, 107, 0.3);
+        }
+        
+        .surrender-confirm-btn:hover {
+            background: linear-gradient(45deg, #ff5252, #e53935);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(255, 107, 107, 0.4);
+        }
+        
+        .surrender-cancel-btn {
+            background: linear-gradient(45deg, #64748b, #475569);
+            color: white;
+            box-shadow: 0 4px 15px rgba(100, 116, 139, 0.3);
+        }
+        
+        .surrender-cancel-btn:hover {
+            background: linear-gradient(45deg, #475569, #334155);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(100, 116, 139, 0.4);
+        }
+        
+        /* 移动端弹窗适配 */
+        @media (max-width: 768px) {
+            .surrender-dialog {
+                padding: 20px;
+                min-width: 280px;
+                margin: 20px;
+            }
+            
+            .surrender-title {
+                font-size: 20px;
+                margin-bottom: 15px;
+            }
+            
+            .surrender-message {
+                font-size: 14px;
+                margin-bottom: 25px;
+            }
+            
+            .surrender-buttons {
+                flex-direction: column;
+                gap: 10px;
+            }
+            
+            .surrender-confirm-btn, .surrender-cancel-btn {
+                padding: 12px 20px;
+                font-size: 14px;
+                width: 100%;
+            }
+        }
+        
+        /* 暂停弹窗样式 */
+        .pause-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: none;
+            z-index: 10000;
+        }
+        
+        .pause-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.2);
+            cursor: default; /* 明确显示这里不可点击 */
+        }
+        
+        .pause-dialog {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: linear-gradient(135deg, rgba(30, 30, 50, 0.95), rgba(50, 50, 80, 0.95));
+            backdrop-filter: blur(20px);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+            padding: 30px;
+            min-width: 320px;
+            max-width: 90vw;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+            text-align: center;
+            cursor: default; /* 确保弹窗内容区域有正确的光标 */
+        }
+        
+        .pause-title {
+            color: #4CAF50;
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            text-shadow: 0 0 10px rgba(76, 175, 80, 0.3);
+        }
+        
+        .pause-timer {
+            color: #e2e8f0;
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 30px;
+            font-family: 'Courier New', monospace;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 10px 20px;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .pause-buttons {
+            display: flex;
+            justify-content: center;
+        }
+        
+        .pause-resume-btn {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            min-width: 120px;
+            background: linear-gradient(45deg, #4CAF50, #45a049);
+            color: white;
+            box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3);
+        }
+        
+        .pause-resume-btn:hover {
+            background: linear-gradient(45deg, #45a049, #3d8b40);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(76, 175, 80, 0.4);
+        }
+        
+        /* 移动端暂停弹窗适配 */
+        @media (max-width: 768px) {
+            .pause-dialog {
+                padding: 20px;
+                min-width: 280px;
+                margin: 20px;
+            }
+            
+            .pause-title {
+                font-size: 20px;
+                margin-bottom: 15px;
+            }
+            
+            .pause-timer {
+                font-size: 16px;
+                margin-bottom: 25px;
+                padding: 8px 16px;
+            }
+            
+            .pause-resume-btn {
+                padding: 12px 20px;
+                font-size: 14px;
+                width: 100%;
+            }
         }
         
         /* 桌面端小窗口适配 - 保持左侧布局但调整尺寸 */
@@ -1021,13 +1343,26 @@
                     min-height: 4vh !important; /* 确保足够高度 */
                 }
                 
+                /* 游戏控制面板 */
+                .game-control-panel {
+                    flex: none !important;
+                    width: 100% !important;
+                    padding: 1vh 2vw !important;
+                    margin: 0 !important;
+                    border-radius: 1vw !important;
+                    display: flex !important;
+                    flex-direction: column !important;
+                    box-sizing: border-box !important;
+                    min-height: 4vh !important;
+                }
+                
                 .info-row {
                     display: flex !important;
                     justify-content: space-between !important;
                     align-items: center !important;
                     margin: 0 !important;
-                    padding: 0.2vh 0 !important;
-                    min-height: 2vh !important;
+                    padding: 0.1vh 0 !important; /* 减小移动端间距 */
+                    min-height: 1.8vh !important; /* 减小最小高度 */
                 }
                 
                 /* 无人机升级按钮 - 2×2网格 */
@@ -1050,6 +1385,31 @@
                     flex: 1 !important;
                     width: 100% !important;
                     box-sizing: border-box !important;
+                }
+                
+                /* 游戏控制按钮 - 水平排列 */
+                .game-control-panel .upgrade-buttons-container {
+                    display: flex !important;
+                    gap: 1vw !important;
+                    flex: 1 !important;
+                    width: 100% !important;
+                    box-sizing: border-box !important;
+                }
+                
+                .control-btn {
+                    padding: 1vh 1.5vw !important;
+                    font-size: 2.8vw !important;
+                    min-height: 3.5vh !important;
+                    flex: 1 !important;
+                    gap: 0.8vw !important;
+                }
+                
+                .pause-icon, .surrender-icon {
+                    font-size: 3.2vw !important;
+                }
+                
+                .pause-text, .surrender-text {
+                    font-size: 2.6vw !important;
                 }
                 
                 .upgrade-btn {
@@ -1469,6 +1829,19 @@
     </style>
 </head>
 <body>
+    <!-- 加载页面 -->
+    <div id="loadingScreen">
+        <div class="loading-container">
+            <div class="loading-logo">Tiny Galaxy Clash</div>
+            <div class="loading-text" id="loadingText">正在初始化游戏</div>
+            <div class="progress-bar-container">
+                <div class="progress-bar" id="progressBar"></div>
+            </div>
+            <div class="progress-percentage" id="progressPercentage">0%</div>
+            <div class="loading-details" id="loadingDetails">准备加载资源...</div>
+        </div>
+    </div>
+
     <!-- 欢迎界面 -->
     <div id="welcomeScreen">
         <!-- 设置按钮 -->
@@ -1476,8 +1849,6 @@
             ⚙️
         </div>
         
-        <div class="stars-container" id="starsContainer"></div>
-        <div class="particles" id="particles"></div>
         <h1 class="welcome-title">Tiny Galaxy Clash</h1>
         
         <div class="mode-selection">
@@ -1559,6 +1930,31 @@
     <!-- 游戏界面 -->
     <canvas id="gameCanvas" width="1200" height="800"></canvas>
     
+    <!-- 投降确认弹窗 -->
+    <div id="surrenderModal" class="surrender-modal">
+        <div class="surrender-overlay"></div>
+        <div class="surrender-dialog">
+            <div class="surrender-title">投降确认</div>
+            <div class="surrender-message">确定要投降吗？<br>投降后游戏将立即结束。</div>
+            <div class="surrender-buttons">
+                <button class="surrender-confirm-btn" id="confirmSurrender">确认投降</button>
+                <button class="surrender-cancel-btn" id="cancelSurrender">取消</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 暂停弹窗 -->
+    <div id="pauseModal" class="pause-modal">
+        <div class="pause-overlay"></div>
+        <div class="pause-dialog">
+            <div class="pause-title">游戏已暂停</div>
+            <div class="pause-timer" id="pauseTimer">暂停时间: 00:00</div>
+            <div class="pause-buttons">
+                <button class="pause-resume-btn" id="resumeGame">继续游戏</button>
+            </div>
+        </div>
+    </div>
+    
     <div id="ui">
         <div class="mobile-ui-container">
             <!-- 基础信息面板 -->
@@ -1603,12 +1999,289 @@
                     <button class="upgrade-btn" id="upgradeBase">基地血量 <span class="level-display">Lv.<span id="baseLevel">0</span></span></button>
                 </div>
             </div>
+            
+            <!-- 游戏控制面板 -->
+            <div class="upgrade-panel game-control-panel">
+                <div class="upgrade-buttons-container">
+                    <button class="control-btn pause-btn" id="pauseGame">
+                        <span class="pause-icon">⏸️</span>
+                        <span class="pause-text">暂停</span>
+                    </button>
+                    <button class="control-btn surrender-btn" id="surrenderGame">
+                        <span class="surrender-icon">🏳️</span>
+                        <span class="surrender-text">投降</span>
+                    </button>
+                </div>
+            </div>
         </div>
     </div>
     
     <!-- 移除独立的gameInfo，已合并到ui中 -->
     
     <script>
+        // 资源加载管理器
+        class ResourceLoader {
+            constructor() {
+                this.resources = [];
+                this.loadedCount = 0;
+                this.totalCount = 0;
+                this.onProgress = null;
+                this.onComplete = null;
+                
+                // UI 元素
+                this.loadingScreen = document.getElementById('loadingScreen');
+                this.progressBar = document.getElementById('progressBar');
+                this.progressPercentage = document.getElementById('progressPercentage');
+                this.loadingText = document.getElementById('loadingText');
+                this.loadingDetails = document.getElementById('loadingDetails');
+            }
+            
+            // 添加图片资源
+            addImage(src, name) {
+                this.resources.push({
+                    type: 'image',
+                    src: src,
+                    name: name,
+                    loaded: false
+                });
+                this.totalCount++;
+            }
+            
+            // 添加音频资源
+            addAudio(src, name) {
+                this.resources.push({
+                    type: 'audio',
+                    src: src,
+                    name: name,
+                    loaded: false
+                });
+                this.totalCount++;
+            }
+            
+            // 添加脚本资源
+            addScript(src, name) {
+                this.resources.push({
+                    type: 'script',
+                    src: src,
+                    name: name,
+                    loaded: false
+                });
+                this.totalCount++;
+            }
+            
+            // 开始加载所有资源
+            async loadAll() {
+                this.updateProgress(0, '开始加载资源...');
+                
+                // 并行加载所有资源
+                const promises = this.resources.map(resource => this.loadResource(resource));
+                
+                try {
+                    await Promise.all(promises);
+                    this.updateProgress(100, '加载完成！');
+                    
+                    // 延迟一点时间让用户看到100%
+                    setTimeout(() => {
+                        this.hideLoadingScreen();
+                        if (this.onComplete) this.onComplete();
+                    }, 500);
+                } catch (error) {
+                    console.error('资源加载失败:', error);
+                    this.updateProgress(100, '加载完成（部分资源可能失败）');
+                    setTimeout(() => {
+                        this.hideLoadingScreen();
+                        if (this.onComplete) this.onComplete();
+                    }, 500);
+                }
+            }
+            
+            // 加载单个资源
+            loadResource(resource) {
+                return new Promise((resolve, reject) => {
+                    switch (resource.type) {
+                        case 'image':
+                            this.loadImage(resource, resolve, reject);
+                            break;
+                        case 'audio':
+                            this.loadAudio(resource, resolve, reject);
+                            break;
+                        case 'script':
+                            this.loadScript(resource, resolve, reject);
+                            break;
+                        default:
+                            resolve();
+                    }
+                });
+            }
+            
+            // 加载图片
+            loadImage(resource, resolve, reject) {
+                const img = new Image();
+                
+                img.onload = () => {
+                    resource.loaded = true;
+                    resource.element = img;
+                    this.onResourceLoaded(resource);
+                    resolve(img);
+                };
+                
+                img.onerror = () => {
+                    console.warn(`图片加载失败: ${resource.src}`);
+                    resource.loaded = false;
+                    this.onResourceLoaded(resource);
+                    resolve(); // 即使失败也继续
+                };
+                
+                img.src = resource.src;
+            }
+            
+            // 加载音频
+            loadAudio(resource, resolve, reject) {
+                const audio = new Audio();
+                
+                const onCanPlay = () => {
+                    resource.loaded = true;
+                    resource.element = audio;
+                    this.onResourceLoaded(resource);
+                    cleanup();
+                    resolve(audio);
+                };
+                
+                const onError = () => {
+                    console.warn(`音频加载失败: ${resource.src}`);
+                    resource.loaded = false;
+                    this.onResourceLoaded(resource);
+                    cleanup();
+                    resolve(); // 即使失败也继续
+                };
+                
+                const cleanup = () => {
+                    audio.removeEventListener('canplaythrough', onCanPlay);
+                    audio.removeEventListener('error', onError);
+                };
+                
+                audio.addEventListener('canplaythrough', onCanPlay);
+                audio.addEventListener('error', onError);
+                audio.preload = 'auto';
+                audio.src = resource.src;
+            }
+            
+            // 加载脚本
+            loadScript(resource, resolve, reject) {
+                const script = document.createElement('script');
+                
+                script.onload = () => {
+                    resource.loaded = true;
+                    resource.element = script;
+                    this.onResourceLoaded(resource);
+                    resolve(script);
+                };
+                
+                script.onerror = () => {
+                    console.warn(`脚本加载失败: ${resource.src}`);
+                    resource.loaded = false;
+                    this.onResourceLoaded(resource);
+                    resolve(); // 即使失败也继续
+                };
+                
+                script.src = resource.src;
+                document.head.appendChild(script);
+            }
+            
+            // 资源加载完成回调
+            onResourceLoaded(resource) {
+                this.loadedCount++;
+                const progress = Math.round((this.loadedCount / this.totalCount) * 100);
+                const statusText = resource.loaded ? '✓' : '✗';
+                this.updateProgress(progress, `${statusText} ${resource.name}`);
+                
+                if (this.onProgress) {
+                    this.onProgress(progress, this.loadedCount, this.totalCount);
+                }
+            }
+            
+            // 更新进度显示
+            updateProgress(percentage, details) {
+                if (this.progressBar) {
+                    this.progressBar.style.width = percentage + '%';
+                }
+                if (this.progressPercentage) {
+                    this.progressPercentage.textContent = percentage + '%';
+                }
+                if (this.loadingDetails && details) {
+                    this.loadingDetails.textContent = details;
+                }
+            }
+            
+            // 隐藏加载页面
+            hideLoadingScreen() {
+                if (this.loadingScreen) {
+                    this.loadingScreen.classList.add('hidden');
+                    setTimeout(() => {
+                        this.loadingScreen.style.display = 'none';
+                    }, 500);
+                }
+            }
+        }
+        
+        // 初始化资源加载
+        function initializeGame() {
+            const loader = new ResourceLoader();
+            
+            // 添加需要预加载的资源
+            loader.addImage('assets/images/backgrounds/space_background.jpg', '欢迎界面背景');
+            loader.addImage('assets/images/backgrounds/game_background.jpg', '游戏背景');
+            loader.addImage('assets/images/ship_explosion.png', '爆炸特效');
+            loader.addAudio('assets/audio/background.mp3', '背景音乐');
+            loader.addAudio('assets/audio/shoot.mp3', '射击音效');
+            loader.addScript('game.js', '游戏核心脚本');
+            
+            // 设置加载完成回调
+            loader.onComplete = () => {
+                console.log('🎮 所有资源加载完成，游戏准备就绪！');
+                
+                // 初始化游戏
+                setTimeout(() => {
+                    initializeGameAfterLoading();
+                }, 100);
+            };
+            
+            // 设置进度回调
+            loader.onProgress = (percentage, loaded, total) => {
+                console.log(`加载进度: ${percentage}% (${loaded}/${total})`);
+            };
+            
+            // 开始加载
+            loader.loadAll();
+        }
+        
+        // 资源加载完成后的游戏初始化
+        function initializeGameAfterLoading() {
+            // 显示欢迎界面
+            const welcomeScreen = document.getElementById('welcomeScreen');
+            welcomeScreen.classList.add('show');
+            
+            // 预加载背景图片（现在应该已经加载完成）
+            preloadBackgroundImage();
+            
+            // 初始化游戏实例
+            try {
+                window.game = new DroneGame();
+                console.log('✅ 游戏初始化成功');
+            } catch (error) {
+                console.error('❌ 游戏初始化失败:', error);
+                
+                // 显示错误信息
+                const errorDiv = document.createElement('div');
+                errorDiv.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:red;color:white;padding:20px;border-radius:10px;z-index:9999;';
+                errorDiv.textContent = '游戏初始化失败: ' + error.message;
+                document.body.appendChild(errorDiv);
+            }
+        }
+        
+        // 页面加载完成后开始资源加载
+        document.addEventListener('DOMContentLoaded', initializeGame);
+
         // 背景图预加载优化
         function preloadBackgroundImage() {
             const img = new Image();
@@ -1667,6 +2340,10 @@
                 // 音效队列系统 - 串行播放
                 this.soundQueue = [];
                 this.isProcessingQueue = false;
+                
+                // 音效延迟系统
+                this.lastSoundTime = 0;
+                this.soundDelay = 50; // 50毫秒延迟间隔
                 
                 // 初始化音效池
                 this.initSoundPool();
@@ -2067,8 +2744,26 @@
                     return;
                 }
                 
-                // 直接尝试播放，不使用队列（允许并发）
-                this.playFromPool();
+                // 使用延迟播放避免同时播放
+                this.playWithDelay();
+            }
+            
+            playWithDelay() {
+                const currentTime = Date.now();
+                const timeSinceLastSound = currentTime - this.lastSoundTime;
+                
+                if (timeSinceLastSound < this.soundDelay) {
+                    // 如果距离上次播放时间太短，延迟播放
+                    const delayTime = this.soundDelay - timeSinceLastSound;
+                    setTimeout(() => {
+                        this.playFromPool();
+                        this.lastSoundTime = Date.now();
+                    }, delayTime);
+                } else {
+                    // 可以立即播放
+                    this.playFromPool();
+                    this.lastSoundTime = currentTime;
+                }
             }
             
             playFromPool() {
@@ -2101,7 +2796,7 @@
                         const playPromise = audio.play();
                         if (playPromise !== undefined) {
                             playPromise.then(() => {
-                                console.log('音效开始播放（并发）');
+                                console.log('音效开始播放（延迟播放）');
                                 
                                 // 播放成功，监听结束事件
                                 const onEnded = () => {
@@ -2217,72 +2912,10 @@
             }
         }
         
-        // 创建闪烁星星 - 增强版
-        function createStars() {
-            const starsContainer = document.getElementById('starsContainer');
-            const starCount = 100; // 增加星星数量
-            
-            for (let i = 0; i < starCount; i++) {
-                const star = document.createElement('div');
-                star.className = 'star';
-                
-                // 随机大小 - 更多样化
-                const sizeType = Math.random();
-                let size;
-                if (sizeType < 0.6) {
-                    size = Math.random() * 2 + 1; // 60% 小星星 1-3px
-                } else if (sizeType < 0.9) {
-                    size = Math.random() * 2 + 3; // 30% 中等星星 3-5px
-                } else {
-                    size = Math.random() * 3 + 5; // 10% 大星星 5-8px
-                }
-                
-                star.style.width = size + 'px';
-                star.style.height = size + 'px';
-                
-                // 随机位置
-                star.style.left = Math.random() * 100 + '%';
-                star.style.top = Math.random() * 100 + '%';
-                
-                // 随机动画延迟和持续时间
-                star.style.animationDelay = Math.random() * 6 + 's';
-                star.style.animationDuration = (Math.random() * 4 + 2) + 's'; // 2-6秒
-                
-                starsContainer.appendChild(star);
-            }
-        }
-        
-        // 粒子背景效果
-        function createParticles() {
-            const particlesContainer = document.getElementById('particles');
-            const particleCount = 20; // 减少粒子数量
-            
-            for (let i = 0; i < particleCount; i++) {
-                const particle = document.createElement('div');
-                particle.className = 'particle';
-                
-                // 随机大小和位置
-                const size = Math.random() * 1.5 + 0.5; // 更小的粒子
-                particle.style.width = size + 'px';
-                particle.style.height = size + 'px';
-                particle.style.left = Math.random() * 100 + '%';
-                particle.style.top = Math.random() * 100 + '%';
-                
-                // 随机动画延迟
-                particle.style.animationDelay = Math.random() * 8 + 's';
-                particle.style.animationDuration = (Math.random() * 6 + 6) + 's'; // 更慢的漂浮
-                
-                particlesContainer.appendChild(particle);
-            }
-        }
-        
         // 页面加载时创建所有效果
         document.addEventListener('DOMContentLoaded', function() {
             // 移动端优化初始化
             initMobileOptimizations();
-            
-            createStars();
-            createParticles();
             
             // 预览按钮点击事件
             const previewBtn = document.getElementById('previewAssets');
@@ -2328,17 +2961,6 @@
                     lastTouchEnd = now;
                 }, false);
                 
-                // 移动端性能优化：减少星星和粒子数量
-                const starsContainer = document.getElementById('starsContainer');
-                const particlesContainer = document.getElementById('particles');
-                
-                if (starsContainer) {
-                    starsContainer.style.display = window.innerWidth <= 480 ? 'none' : 'block';
-                }
-                if (particlesContainer) {
-                    particlesContainer.style.display = 'none'; // 移动端禁用粒子效果
-                }
-                
                 console.log('移动端优化已启用');
             }
             
@@ -2352,28 +2974,6 @@
                 }, 100);
             });
         }
-    </script>
-    <script src="game.js"></script>
-    <script>
-        // 初始化游戏
-        let game;
-        
-        // 页面加载完成后初始化游戏
-        window.addEventListener('DOMContentLoaded', () => {
-            try {
-                game = new DroneGame();
-                // 将游戏实例保存到全局，供移动端优化和测试使用
-                window.game = game;
-                console.log('游戏初始化成功');
-            } catch (error) {
-                console.error('游戏初始化失败:', error);
-                // 显示错误信息给用户
-                const errorDiv = document.createElement('div');
-                errorDiv.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:red;color:white;padding:20px;border-radius:10px;z-index:9999;';
-                errorDiv.textContent = '游戏初始化失败: ' + error.message;
-                document.body.appendChild(errorDiv);
-            }
-        });
     </script>
 </body>
 </html>
