@@ -33,6 +33,9 @@
             z-index: 2000;
             opacity: 1;
             transition: opacity 0.5s ease-out;
+            /* 确保加载页面在最顶层，阻止所有交互 */
+            pointer-events: all;
+            user-select: none;
         }
         
         #loadingScreen.hidden {
@@ -2287,6 +2290,9 @@
                 this.progressPercentage = document.getElementById('progressPercentage');
                 this.loadingText = document.getElementById('loadingText');
                 this.loadingDetails = document.getElementById('loadingDetails');
+                
+                // 在加载期间禁用所有点击事件
+                this.disableUserInteraction();
             }
             
             // 添加图片资源
@@ -2472,7 +2478,56 @@
                     this.loadingScreen.classList.add('hidden');
                     setTimeout(() => {
                         this.loadingScreen.style.display = 'none';
+                        // 加载完成后启用用户交互
+                        this.enableUserInteraction();
                     }, 500);
+                }
+            }
+            
+            // 禁用用户交互（加载期间）
+            disableUserInteraction() {
+                // 创建一个全屏遮罩层来阻止所有点击事件
+                this.interactionBlocker = document.createElement('div');
+                this.interactionBlocker.style.cssText = `
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    z-index: 9999;
+                    background: transparent;
+                    cursor: not-allowed;
+                    pointer-events: all;
+                `;
+                this.interactionBlocker.id = 'loadingInteractionBlocker';
+                
+                // 阻止所有事件
+                this.interactionBlocker.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log('加载期间禁止点击操作');
+                }, true);
+                
+                this.interactionBlocker.addEventListener('touchstart', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                }, true);
+                
+                this.interactionBlocker.addEventListener('touchend', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                }, true);
+                
+                document.body.appendChild(this.interactionBlocker);
+                console.log('已禁用用户交互，等待加载完成');
+            }
+            
+            // 启用用户交互（加载完成后）
+            enableUserInteraction() {
+                if (this.interactionBlocker && this.interactionBlocker.parentNode) {
+                    this.interactionBlocker.parentNode.removeChild(this.interactionBlocker);
+                    this.interactionBlocker = null;
+                    console.log('已启用用户交互，可以开始游戏');
                 }
             }
         }
@@ -2510,6 +2565,8 @@
         
         // 资源加载完成后的游戏初始化
         function initializeGameAfterLoading() {
+            console.log('🎮 资源加载完成，初始化游戏界面');
+            
             // 显示欢迎界面
             const welcomeScreen = document.getElementById('welcomeScreen');
             welcomeScreen.classList.add('show');
@@ -2520,7 +2577,7 @@
             // 初始化游戏实例
             try {
                 window.game = new DroneGame();
-                console.log('✅ 游戏初始化成功');
+                console.log('✅ 游戏初始化成功，用户现在可以开始游戏');
             } catch (error) {
                 console.error('❌ 游戏初始化失败:', error);
                 
