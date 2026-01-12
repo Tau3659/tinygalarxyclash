@@ -855,6 +855,24 @@
             cursor: default; /* 明确显示这里不可点击 */
         }
         
+        .pause-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.2);
+            cursor: default; /* 明确显示这里不可点击 */
+        }
+        
+        /* 移动端遮罩层优化 */
+        @media (max-width: 768px) and (hover: none) {
+            .surrender-overlay, .pause-overlay {
+                background: rgba(0, 0, 0, 0.4); /* 移动端使用更深的遮罩 */
+                backdrop-filter: blur(2px); /* 添加轻微模糊效果 */
+            }
+        }
+        
         .surrender-dialog {
             position: absolute;
             top: 50%;
@@ -928,33 +946,167 @@
             box-shadow: 0 6px 20px rgba(100, 116, 139, 0.4);
         }
         
-        /* 移动端弹窗适配 */
-        @media (max-width: 768px) {
+        /* 移动端弹窗适配 - 使用更精确的检测 */
+        @media (max-width: 768px) and (hover: none) {
             .surrender-dialog {
                 padding: 20px;
-                min-width: 280px;
-                margin: 20px;
+                width: 80vw; /* 占屏幕宽度的80% */
+                max-width: none; /* 移除最大宽度限制 */
+                min-width: 0; /* 移除最小宽度限制 */
+                height: auto; /* 高度自适应内容 */
+                margin: 0; /* 移除外边距，因为已经通过transform居中 */
+                border-radius: 15px;
+                /* 确保在移动端完美居中 */
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                /* 移动端优化的背景和边框 */
+                background: linear-gradient(135deg, rgba(30, 30, 50, 0.98), rgba(50, 50, 80, 0.98));
+                backdrop-filter: blur(25px);
+                border: 2px solid rgba(255, 255, 255, 0.25);
+                box-shadow: 0 25px 50px rgba(0, 0, 0, 0.6);
+                box-sizing: border-box; /* 确保padding包含在宽度内 */
             }
             
             .surrender-title {
-                font-size: 20px;
-                margin-bottom: 15px;
+                font-size: 18px;
+                margin-bottom: 12px;
             }
             
             .surrender-message {
                 font-size: 14px;
-                margin-bottom: 25px;
+                margin-bottom: 20px;
+                line-height: 1.4;
             }
             
             .surrender-buttons {
                 flex-direction: column;
-                gap: 10px;
+                gap: 12px;
+                margin-top: 15px;
             }
             
             .surrender-confirm-btn, .surrender-cancel-btn {
-                padding: 12px 20px;
-                font-size: 14px;
+                padding: 14px 20px;
+                font-size: 15px;
                 width: 100%;
+                border-radius: 12px;
+                min-height: 48px; /* 确保触摸友好的最小高度 */
+                box-sizing: border-box;
+            }
+            
+            /* 移动端暂停弹窗优化 */
+            .pause-dialog {
+                padding: 20px;
+                width: 80vw; /* 占屏幕宽度的80% */
+                max-width: none; /* 移除最大宽度限制 */
+                min-width: 0; /* 移除最小宽度限制 */
+                height: auto; /* 高度自适应内容 */
+                margin: 0; /* 移除外边距，因为已经通过transform居中 */
+                border-radius: 15px;
+                /* 确保在移动端完美居中 */
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                /* 移动端优化的背景和边框 */
+                background: linear-gradient(135deg, rgba(30, 30, 50, 0.98), rgba(50, 50, 80, 0.98));
+                backdrop-filter: blur(25px);
+                border: 2px solid rgba(255, 255, 255, 0.25);
+                box-shadow: 0 25px 50px rgba(0, 0, 0, 0.6);
+                box-sizing: border-box; /* 确保padding包含在宽度内 */
+            }
+            
+            .pause-title {
+                font-size: 18px;
+                margin-bottom: 12px;
+            }
+            
+            .pause-timer {
+                font-size: 16px;
+                margin-bottom: 20px;
+                padding: 10px 16px;
+                border-radius: 12px;
+                background: rgba(0, 0, 0, 0.4);
+                border: 1px solid rgba(255, 255, 255, 0.15);
+            }
+            
+            .pause-resume-btn {
+                padding: 14px 20px;
+                font-size: 15px;
+                width: 100%;
+                border-radius: 12px;
+                min-height: 48px; /* 确保触摸友好的最小高度 */
+                box-sizing: border-box;
+            }
+        }
+        
+        /* 超小屏幕移动端弹窗适配 */
+        @media (max-width: 480px) and (hover: none) {
+            .surrender-dialog, .pause-dialog {
+                padding: 18px;
+                width: 80vw; /* 保持80%宽度 */
+                border-radius: 12px;
+            }
+            
+            .surrender-title, .pause-title {
+                font-size: 16px;
+                margin-bottom: 10px;
+            }
+            
+            .surrender-message {
+                font-size: 13px;
+                margin-bottom: 18px;
+            }
+            
+            .pause-timer {
+                font-size: 14px;
+                margin-bottom: 18px;
+                padding: 8px 12px;
+            }
+            
+            .surrender-confirm-btn, .surrender-cancel-btn, .pause-resume-btn {
+                padding: 12px 16px;
+                font-size: 14px;
+                min-height: 44px;
+                border-radius: 10px;
+            }
+        }
+        
+        /* 横屏模式移动端弹窗适配 */
+        @media (max-width: 768px) and (orientation: landscape) and (hover: none) {
+            .surrender-dialog, .pause-dialog {
+                width: 70vw; /* 横屏时稍微减小宽度 */
+                max-height: 80vh; /* 限制最大高度，避免超出屏幕 */
+                overflow-y: auto; /* 内容过多时允许滚动 */
+            }
+            
+            .surrender-title, .pause-title {
+                font-size: 16px;
+                margin-bottom: 8px;
+            }
+            
+            .surrender-message {
+                font-size: 13px;
+                margin-bottom: 15px;
+            }
+            
+            .pause-timer {
+                font-size: 14px;
+                margin-bottom: 15px;
+                padding: 6px 12px;
+            }
+            
+            .surrender-buttons {
+                flex-direction: row; /* 横屏时按钮水平排列 */
+                gap: 10px;
+                margin-top: 10px;
+            }
+            
+            .surrender-confirm-btn, .surrender-cancel-btn, .pause-resume-btn {
+                padding: 10px 16px;
+                font-size: 13px;
+                min-height: 40px;
             }
         }
         
@@ -967,16 +1119,6 @@
             height: 100%;
             display: none;
             z-index: 10000;
-        }
-        
-        .pause-overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.2);
-            cursor: default; /* 明确显示这里不可点击 */
         }
         
         .pause-dialog {
@@ -1040,32 +1182,7 @@
             transform: translateY(-2px);
             box-shadow: 0 6px 20px rgba(76, 175, 80, 0.4);
         }
-        
-        /* 移动端暂停弹窗适配 */
-        @media (max-width: 768px) {
-            .pause-dialog {
-                padding: 20px;
-                min-width: 280px;
-                margin: 20px;
-            }
-            
-            .pause-title {
-                font-size: 20px;
-                margin-bottom: 15px;
-            }
-            
-            .pause-timer {
-                font-size: 16px;
-                margin-bottom: 25px;
-                padding: 8px 16px;
-            }
-            
-            .pause-resume-btn {
-                padding: 12px 20px;
-                font-size: 14px;
-                width: 100%;
-            }
-        }
+
         
         /* 桌面端小窗口适配 - 保持左侧布局但调整尺寸 */
         @media (max-width: 1200px) and (pointer: fine) {
@@ -1259,16 +1376,18 @@
                 top: 0 !important;
                 left: 0 !important;
                 right: 0 !important;
-                width: auto !important;
+                width: 100vw !important;
+                height: auto !important;
                 background: linear-gradient(180deg, rgba(0, 20, 40, 0.95) 0%, rgba(0, 20, 40, 0.85) 100%);
                 backdrop-filter: blur(15px);
                 border-bottom: 2px solid rgba(100, 200, 255, 0.3);
                 box-shadow: 0 2px 20px rgba(0, 0, 0, 0.5);
                 z-index: 1000;
-                padding: 1vh 2vw;
+                padding: 1vh 2vw !important;
                 box-sizing: border-box;
                 /* 重要：保持默认隐藏状态，只有JavaScript控制显示 */
                 display: none !important;
+                flex-direction: column !important;
             }
             
             /* 当游戏开始时，通过JavaScript设置为flex */
@@ -1278,277 +1397,162 @@
             
             .mobile-ui-container {
                 display: flex !important;
-                width: 100%;
-                gap: 1vw;
-                align-items: stretch;
+                flex-direction: column !important;
+                width: 100% !important;
+                gap: 1vh !important;
             }
             
-            /* 屏幕宽度小于400px：垂直排列3个面板 */
-            @media (max-width: 399px) {
-                #ui {
-                    height: auto !important; /* 自动高度 */
-                    min-height: 180px !important; /* 增加高度，确保按钮不超出 */
-                    max-height: 250px !important; /* 增加最大高度 */
-                    padding: 1vh 2vw !important; /* 使用百分比内边距 */
-                    left: 0 !important;
-                    right: 0 !important;
-                    width: 100vw !important; /* 占满整个视口宽度 */
-                    box-sizing: border-box !important;
-                }
-                
-                .mobile-ui-container {
-                    flex-direction: column !important;
-                    gap: 1vh !important; /* 增加间距 */
-                    width: 100% !important;
-                    max-width: 100% !important;
-                }
-                
-                /* 信息面板 - 垂直排列时占满宽度 */
-                .info-panel {
-                    flex: none !important;
-                    width: 100% !important;
-                    padding: 1vh 2vw !important; /* 增加内边距 */
-                    margin: 0 !important;
-                    border-radius: 1vw !important;
-                    display: grid !important;
-                    grid-template-columns: 1fr 1fr !important;
-                    gap: 2vw !important; /* 增加间距 */
-                    align-items: center !important;
-                    box-sizing: border-box !important;
-                }
-                
-                /* 无人机升级面板 */
-                .drone-upgrade-panel {
-                    flex: none !important;
-                    width: 100% !important;
-                    padding: 1vh 2vw !important; /* 增加内边距 */
-                    margin: 0 !important;
-                    border-radius: 1vw !important;
-                    display: flex !important;
-                    flex-direction: column !important;
-                    box-sizing: border-box !important;
-                    min-height: 8vh !important; /* 确保足够高度 */
-                }
-                
-                /* 基地升级面板 */
-                .base-upgrade-panel {
-                    flex: none !important;
-                    width: 100% !important;
-                    padding: 1vh 2vw !important; /* 增加内边距 */
-                    margin: 0 !important;
-                    border-radius: 1vw !important;
-                    display: flex !important;
-                    flex-direction: column !important;
-                    box-sizing: border-box !important;
-                    min-height: 4vh !important; /* 确保足够高度 */
-                }
-                
-                /* 游戏控制面板 */
-                .game-control-panel {
-                    flex: none !important;
-                    width: 100% !important;
-                    padding: 1vh 2vw !important;
-                    margin: 0 !important;
-                    border-radius: 1vw !important;
-                    display: flex !important;
-                    flex-direction: column !important;
-                    box-sizing: border-box !important;
-                    min-height: 4vh !important;
-                }
-                
-                .info-row {
-                    display: flex !important;
-                    justify-content: space-between !important;
-                    align-items: center !important;
-                    margin: 0 !important;
-                    padding: 0.1vh 0 !important; /* 减小移动端间距 */
-                    min-height: 1.8vh !important; /* 减小最小高度 */
-                }
-                
-                /* 无人机升级按钮 - 2×2网格 */
-                .drone-upgrade-panel .upgrade-buttons-container {
-                    display: grid !important;
-                    grid-template-columns: 1fr 1fr !important;
-                    gap: 1vw !important; /* 增加间距 */
-                    flex: 1 !important;
-                    width: 100% !important;
-                    box-sizing: border-box !important;
-                }
-                
-                .drone-upgrade-panel .upgrade-buttons-row {
-                    display: contents !important; /* 让子元素直接参与grid布局 */
-                }
-                
-                /* 基地升级按钮 - 单个按钮 */
-                .base-upgrade-panel .upgrade-buttons-container {
-                    display: flex !important;
-                    flex: 1 !important;
-                    width: 100% !important;
-                    box-sizing: border-box !important;
-                }
-                
-                /* 游戏控制按钮 - 水平排列 */
-                .game-control-panel .upgrade-buttons-container {
-                    display: flex !important;
-                    gap: 1vw !important;
-                    flex: 1 !important;
-                    width: 100% !important;
-                    box-sizing: border-box !important;
-                }
-                
-                .control-btn {
-                    padding: 1vh 1.5vw !important;
-                    font-size: 2.8vw !important;
-                    min-height: 3.5vh !important;
-                    flex: 1 !important;
-                    gap: 0.8vw !important;
-                }
-                
-                .pause-icon, .surrender-icon {
-                    font-size: 3.2vw !important;
-                }
-                
-                .pause-text, .surrender-text {
-                    font-size: 2.6vw !important;
-                }
-                
-                .upgrade-btn {
-                    margin-bottom: 0 !important;
-                    min-height: 3.5vh !important; /* 增加按钮高度 */
-                    padding: 0.8vh 1vw !important; /* 增加内边距 */
-                    font-size: 2.5vw !important; /* 稍微增大字体 */
-                    border-radius: 1vw !important;
-                    box-sizing: border-box !important;
-                    overflow: hidden !important;
-                    text-overflow: ellipsis !important;
-                    white-space: nowrap !important;
-                    width: 100% !important;
-                }
+            /* 顶部区域：信息显示和控制按钮 */
+            .top-ui-row {
+                display: flex !important;
+                width: 100% !important;
+                gap: 2vw !important;
+                align-items: center !important;
+                min-height: 6vh !important;
             }
             
-            /* 屏幕宽度400px及以上：水平排列3个面板，等分屏幕宽度 */
-            @media (min-width: 400px) {
-                #ui {
-                    height: 15vh !important; /* 增加高度 */
-                    min-height: 100px !important; /* 增加最小高度 */
-                    max-height: 140px !important; /* 增加最大高度 */
-                    padding: 1vh 1vw !important; /* 使用百分比内边距 */
-                    left: 0 !important;
-                    right: 0 !important;
-                    width: 100vw !important; /* 占满整个视口宽度 */
-                    box-sizing: border-box !important;
-                }
-                
-                .mobile-ui-container {
-                    flex-direction: row !important;
-                    gap: 1vw !important; /* 使用百分比间距 */
-                    width: 100% !important;
-                    height: 100% !important;
-                }
-                
-                /* 信息面板 - 占30%宽度 */
-                .info-panel {
-                    flex: 0 0 30% !important; /* 30%宽度 */
-                    padding: 1vh 1vw !important;
-                    margin: 0 !important;
-                    border-radius: 1vw !important;
-                    min-height: 0 !important;
-                    display: flex !important;
-                    flex-direction: column !important;
-                    justify-content: space-between !important;
-                    min-width: 0 !important;
-                    box-sizing: border-box !important;
-                }
-                
-                /* 无人机升级面板 - 占40%宽度 */
-                .drone-upgrade-panel {
-                    flex: 0 0 40% !important; /* 40%宽度 */
-                    padding: 1vh 1vw !important;
-                    margin: 0 !important;
-                    border-radius: 1vw !important;
-                    min-height: 0 !important;
-                    display: flex !important;
-                    flex-direction: column !important;
-                    min-width: 0 !important;
-                    box-sizing: border-box !important;
-                }
-                
-                /* 基地升级面板 - 占28%宽度 */
-                .base-upgrade-panel {
-                    flex: 0 0 28% !important; /* 28%宽度，总计98% + 2%间距 = 100% */
-                    padding: 1vh 1vw !important;
-                    margin: 0 !important;
-                    border-radius: 1vw !important;
-                    min-height: 0 !important;
-                    display: flex !important;
-                    flex-direction: column !important;
-                    min-width: 0 !important;
-                    box-sizing: border-box !important;
-                    justify-content: center !important; /* 基地面板内容居中 */
-                }
-                
-                .info-row {
-                    display: flex !important;
-                    justify-content: space-between !important;
-                    align-items: center !important;
-                    margin-bottom: 0.3vh !important;
-                    padding: 0.2vh 0 !important;
-                    min-height: 2vh !important;
-                }
-                
-                .info-row:last-child {
-                    margin-bottom: 0 !important;
-                }
-                
-                /* 无人机升级按钮容器 - 2×2网格 */
-                .drone-upgrade-panel .upgrade-buttons-container {
-                    display: grid !important;
-                    grid-template-columns: 1fr 1fr !important;
-                    gap: 0.8vw !important;
-                    flex: 1 !important;
-                    width: 100% !important;
-                    box-sizing: border-box !important;
-                }
-                
-                .drone-upgrade-panel .upgrade-buttons-row {
-                    display: contents !important; /* 让子元素直接参与grid布局 */
-                }
-                
-                /* 基地升级按钮容器 - 单个按钮 */
-                .base-upgrade-panel .upgrade-buttons-container {
-                    display: flex !important;
-                    flex: 1 !important;
-                    align-items: center !important;
-                    width: 100% !important;
-                    box-sizing: border-box !important;
-                }
-                
-                .upgrade-btn {
-                    margin-bottom: 0 !important;
-                    min-height: 3.5vh !important; /* 增加按钮高度 */
-                    padding: 0.8vh 1vw !important; /* 增加内边距 */
-                    font-size: 2.2vw !important;
-                    border-radius: 1vw !important;
-                    box-sizing: border-box !important;
-                    overflow: hidden !important;
-                    text-overflow: ellipsis !important;
-                    white-space: nowrap !important;
-                    width: 100% !important;
-                }
+            /* 左侧信息显示区域 */
+            .info-panel {
+                flex: 1 !important;
+                background: linear-gradient(145deg, rgba(0, 20, 40, 0.95), rgba(0, 30, 60, 0.95));
+                backdrop-filter: blur(12px);
+                padding: 1vh 2vw !important;
+                border-radius: 1.5vw !important;
+                border: 1px solid rgba(100, 200, 255, 0.2);
+                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+                display: grid !important;
+                grid-template-columns: 1fr 1fr !important;
+                gap: 1vw !important;
+                align-items: center !important;
+                box-sizing: border-box !important;
+                margin: 0 !important;
             }
             
-            /* 移动端字体和样式重写 */
+            /* 右侧控制按钮区域 */
+            .control-buttons-area {
+                display: flex !important;
+                gap: 1vw !important;
+                flex-shrink: 0 !important;
+            }
+            
+            .control-btn {
+                background: linear-gradient(45deg, rgba(74, 85, 104, 0.8), rgba(45, 55, 72, 0.8)) !important;
+                color: #e2e8f0 !important;
+                border: 1px solid rgba(255, 255, 255, 0.1) !important;
+                border-radius: 1.5vw !important;
+                padding: 1vh 3vw !important;
+                font-size: 3vw !important;
+                font-weight: 500 !important;
+                cursor: pointer !important;
+                transition: all 0.2s ease !important;
+                backdrop-filter: blur(5px) !important;
+                display: flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                min-height: 6vh !important;
+                min-width: 15vw !important;
+                box-sizing: border-box !important;
+                white-space: nowrap !important;
+            }
+            
+            .control-btn:hover {
+                background: linear-gradient(45deg, rgba(74, 85, 104, 1), rgba(45, 55, 72, 1)) !important;
+                border-color: rgba(100, 200, 255, 0.3) !important;
+                transform: translateY(-1px) !important;
+            }
+            
+            .pause-btn {
+                background: linear-gradient(45deg, rgba(59, 130, 246, 0.8), rgba(37, 99, 235, 0.8)) !important;
+            }
+            
+            .pause-btn:hover {
+                background: linear-gradient(45deg, rgba(59, 130, 246, 1), rgba(37, 99, 235, 1)) !important;
+            }
+            
+            .surrender-btn {
+                background: linear-gradient(45deg, rgba(239, 68, 68, 0.8), rgba(220, 38, 38, 0.8)) !important;
+            }
+            
+            .surrender-btn:hover {
+                background: linear-gradient(45deg, rgba(239, 68, 68, 1), rgba(220, 38, 38, 1)) !important;
+            }
+            
+            /* 底部升级按钮区域 */
+            .upgrade-buttons-row {
+                display: flex !important;
+                width: 100% !important;
+                gap: 1vw !important;
+                margin-top: 1vh !important;
+            }
+            
+            .upgrade-btn {
+                flex: 1 !important;
+                background: linear-gradient(45deg, rgba(74, 85, 104, 0.8), rgba(45, 55, 72, 0.8)) !important;
+                color: #e2e8f0 !important;
+                border: 1px solid rgba(255, 255, 255, 0.1) !important;
+                border-radius: 1.5vw !important;
+                padding: 1.5vh 1vw !important;
+                font-size: 2.8vw !important;
+                font-weight: 500 !important;
+                cursor: pointer !important;
+                transition: all 0.2s ease !important;
+                display: flex !important;
+                flex-direction: column !important;
+                align-items: center !important;
+                justify-content: center !important;
+                min-height: 8vh !important;
+                box-sizing: border-box !important;
+                text-align: center !important;
+                gap: 0.5vh !important;
+                margin-bottom: 0 !important;
+            }
+            
+            .upgrade-btn:hover {
+                background: linear-gradient(45deg, rgba(74, 85, 104, 1), rgba(45, 55, 72, 1)) !important;
+                border-color: rgba(100, 200, 255, 0.3) !important;
+                transform: translateY(-1px) !important;
+            }
+            
+            .upgrade-btn:disabled {
+                background: linear-gradient(45deg, rgba(45, 55, 72, 0.5), rgba(26, 32, 44, 0.5)) !important;
+                cursor: not-allowed !important;
+                opacity: 0.6 !important;
+                transform: none !important;
+            }
+            
+            .upgrade-btn-name {
+                font-size: 2.5vw !important;
+                font-weight: 600 !important;
+                color: #e2e8f0 !important;
+            }
+            
+            .level-display {
+                color: #ffd700 !important;
+                font-weight: 600 !important;
+                text-shadow: 0 0 4px rgba(255, 215, 0, 0.3) !important;
+                font-size: 2.2vw !important;
+            }
+            
+            /* 信息行样式 */
+            .info-row {
+                display: flex !important;
+                justify-content: space-between !important;
+                align-items: center !important;
+                margin: 0 !important;
+                padding: 0.2vh 0 !important;
+                min-height: 2.5vh !important;
+            }
+            
             .info-label {
-                font-size: 2.8vw !important; /* 稍微增大字体 */
+                font-size: 2.8vw !important;
                 color: #a0aec0 !important;
                 font-weight: 500 !important;
             }
             
             .info-value {
-                font-size: 3.2vw !important; /* 稍微增大字体 */
+                font-size: 3.2vw !important;
                 color: #e2e8f0 !important;
                 font-weight: 600 !important;
-                min-width: 8vw !important;
                 text-align: right !important;
             }
             
@@ -1562,44 +1566,247 @@
                 color: #718096 !important;
             }
             
+            /* 隐藏原有的面板标题和容器 */
             .panel-title {
-                font-size: 3vw !important;
-                font-weight: 600 !important;
-                margin-bottom: 0.4vh !important;
-                text-align: center !important;
-                border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
-                padding-bottom: 0.2vh !important;
-                color: #cbd5e0 !important;
+                display: none !important;
             }
             
+            .desktop-info-panel,
+            .drone-upgrade-panel,
+            .base-upgrade-panel,
+            .game-control-panel {
+                display: none !important;
+            }
+            
+            .upgrade-buttons-container {
+                display: none !important;
+            }
+        }
+        
+        /* 桌面端样式保持不变 - 确保不被移动端样式覆盖 */
+        @media (min-width: 769px) and (hover: hover) {
+            /* 桌面端UI保持原有布局 */
+            #ui {
+                position: absolute !important;
+                top: 15px !important;
+                left: 15px !important;
+                right: auto !important;
+                width: 240px !important;
+                height: auto !important;
+                background: none !important;
+                backdrop-filter: none !important;
+                border: none !important;
+                box-shadow: none !important;
+                z-index: 100 !important;
+                padding: 0 !important;
+                box-sizing: border-box !important;
+                display: none !important; /* 默认隐藏，只在游戏开始时显示 */
+                flex-direction: column !important;
+            }
+            
+            #ui.game-active {
+                display: block !important; /* 桌面端使用block布局 */
+            }
+            
+            .mobile-ui-container {
+                display: block !important; /* 桌面端使用默认块级布局 */
+            }
+            
+            /* 隐藏移动端专用元素 */
+            .top-ui-row,
+            .control-buttons-area,
+            .upgrade-buttons-row {
+                display: none !important;
+            }
+            
+            /* 显示桌面端原有面板 */
+            .desktop-info-panel,
+            .drone-upgrade-panel,
+            .base-upgrade-panel,
+            .game-control-panel {
+                display: block !important;
+                background: linear-gradient(145deg, rgba(0, 20, 40, 0.95), rgba(0, 30, 60, 0.95)) !important;
+                backdrop-filter: blur(12px) !important;
+                padding: 15px !important;
+                border-radius: 10px !important;
+                margin-bottom: 12px !important;
+                border: 1px solid rgba(100, 200, 255, 0.2) !important;
+                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4) !important;
+                min-width: 200px !important;
+            }
+            
+            /* 隐藏移动端信息面板 */
+            .top-ui-row .info-panel {
+                display: none !important;
+            }
+            
+            .panel-title {
+                display: block !important;
+                color: #cbd5e0 !important;
+                font-size: 15px !important;
+                font-weight: 600 !important;
+                margin-bottom: 10px !important;
+                text-align: center !important;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+                padding-bottom: 6px !important;
+            }
+            
+            .upgrade-buttons-container {
+                display: block !important;
+            }
+            
+            /* 恢复桌面端信息行样式 */
+            .info-row {
+                display: flex !important;
+                justify-content: space-between !important;
+                align-items: center !important;
+                margin-bottom: 4px !important;
+                padding: 1px 0 !important;
+            }
+            
+            .info-row:last-child {
+                margin-bottom: 0 !important;
+            }
+            
+            .info-label {
+                color: #a0aec0 !important;
+                font-size: 14px !important;
+                font-weight: 500 !important;
+                min-width: 60px !important;
+            }
+            
+            .info-value {
+                color: #e2e8f0 !important;
+                font-size: 15px !important;
+                font-weight: 600 !important;
+                min-width: 50px !important;
+                text-align: right !important;
+            }
+            
+            .info-value.highlight {
+                color: #00ff88 !important;
+                text-shadow: 0 0 8px rgba(0, 255, 136, 0.3) !important;
+            }
+            
+            .info-max {
+                color: #718096 !important;
+                font-size: 14px !important;
+            }
+            
+            /* 恢复桌面端按钮样式 */
             .upgrade-btn {
                 background: linear-gradient(45deg, rgba(74, 85, 104, 0.8), rgba(45, 55, 72, 0.8)) !important;
                 color: #e2e8f0 !important;
                 border: 1px solid rgba(255, 255, 255, 0.1) !important;
-                padding: 0.6vh 0.8vw !important;
-                margin-bottom: 0.2vh !important;
+                padding: 10px 15px !important;
+                margin-bottom: 6px !important;
                 cursor: pointer !important;
-                border-radius: 0.6vw !important;
-                font-size: 2.4vw !important; /* 调整字体大小 */
+                border-radius: 8px !important;
+                font-size: 14px !important;
                 font-weight: 500 !important;
                 width: 100% !important;
                 display: flex !important;
                 justify-content: space-between !important;
                 align-items: center !important;
                 transition: all 0.2s ease !important;
-                min-height: 3vh !important; /* 减少最小高度 */
                 box-sizing: border-box !important;
-                overflow: hidden !important; /* 防止内容溢出 */
-                text-overflow: ellipsis !important; /* 文字溢出显示省略号 */
-                white-space: nowrap !important; /* 防止文字换行 */
+                min-height: 40px !important;
+                flex-direction: row !important;
+                text-align: left !important;
+                gap: 0 !important;
+            }
+            
+            .upgrade-btn:hover {
+                background: linear-gradient(45deg, rgba(74, 85, 104, 1), rgba(45, 55, 72, 1)) !important;
+                border-color: rgba(100, 200, 255, 0.3) !important;
+                transform: translateY(-1px) !important;
+            }
+            
+            .upgrade-btn:active {
+                transform: translateY(0) !important;
+            }
+            
+            .upgrade-btn:disabled {
+                background: linear-gradient(45deg, rgba(45, 55, 72, 0.5), rgba(26, 32, 44, 0.5)) !important;
+                cursor: not-allowed !important;
+                opacity: 0.6 !important;
+                transform: none !important;
             }
             
             .level-display {
                 color: #ffd700 !important;
                 font-weight: 600 !important;
-                text-shadow: 0 0 4px rgba(255, 215, 0, 0.3) !important;
-                font-size: 2vw !important;
-                flex-shrink: 0 !important; /* 防止等级显示被压缩 */
+                text-shadow: 0 0 6px rgba(255, 215, 0, 0.3) !important;
+                font-size: 14px !important;
+            }
+            
+            /* 桌面端游戏控制按钮 */
+            .game-control-panel .upgrade-buttons-container {
+                display: flex !important;
+                gap: 10px !important;
+                width: 100% !important;
+            }
+            
+            .control-btn {
+                background: linear-gradient(45deg, rgba(74, 85, 104, 0.8), rgba(45, 55, 72, 0.8)) !important;
+                color: #e2e8f0 !important;
+                border: 1px solid rgba(255, 255, 255, 0.1) !important;
+                border-radius: 8px !important;
+                padding: 8px 12px !important;
+                font-size: 13px !important;
+                font-weight: 500 !important;
+                cursor: pointer !important;
+                transition: all 0.2s ease !important;
+                backdrop-filter: blur(5px) !important;
+                display: flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                gap: 4px !important;
+                flex: 1 !important;
+                min-height: 36px !important;
+                white-space: nowrap !important;
+            }
+            
+            .control-btn:hover {
+                background: linear-gradient(45deg, rgba(74, 85, 104, 1), rgba(45, 55, 72, 1)) !important;
+                border-color: rgba(100, 200, 255, 0.3) !important;
+                transform: translateY(-1px) !important;
+            }
+            
+            .control-btn:active {
+                transform: translateY(0) !important;
+            }
+            
+            .pause-btn {
+                background: linear-gradient(45deg, rgba(59, 130, 246, 0.8), rgba(37, 99, 235, 0.8)) !important;
+            }
+            
+            .pause-btn:hover {
+                background: linear-gradient(45deg, rgba(59, 130, 246, 1), rgba(37, 99, 235, 1)) !important;
+            }
+            
+            .pause-btn.paused {
+                background: linear-gradient(45deg, rgba(34, 197, 94, 0.8), rgba(22, 163, 74, 0.8)) !important;
+            }
+            
+            .pause-btn.paused:hover {
+                background: linear-gradient(45deg, rgba(34, 197, 94, 1), rgba(22, 163, 74, 1)) !important;
+            }
+            
+            .surrender-btn {
+                background: linear-gradient(45deg, rgba(239, 68, 68, 0.8), rgba(220, 38, 38, 0.8)) !important;
+            }
+            
+            .surrender-btn:hover {
+                background: linear-gradient(45deg, rgba(239, 68, 68, 1), rgba(220, 38, 38, 1)) !important;
+            }
+            
+            .pause-icon, .surrender-icon {
+                font-size: 14px !important;
+            }
+            
+            .pause-text, .surrender-text {
+                font-size: 13px !important;
             }
         }
         
@@ -1957,57 +2164,103 @@
     
     <div id="ui">
         <div class="mobile-ui-container">
-            <!-- 基础信息面板 -->
-            <div class="info-panel">
+            <!-- 顶部区域：左侧信息显示 + 右侧控制按钮 -->
+            <div class="top-ui-row">
+                <!-- 左侧信息显示区域 -->
+                <div class="info-panel">
+                    <div class="info-row">
+                        <span class="info-label">资源</span>
+                        <span class="info-value highlight" id="resources">0</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">无人机</span>
+                        <span class="info-value" id="droneCount">20</span><span class="info-max">/30</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">击杀</span>
+                        <span class="info-value highlight" id="killCount">0</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">时间</span>
+                        <span class="info-value" id="gameTime">00:00</span>
+                    </div>
+                </div>
+                
+                <!-- 右侧控制按钮区域 -->
+                <div class="control-buttons-area">
+                    <button class="control-btn pause-btn" id="pauseGame">暂停</button>
+                    <button class="control-btn surrender-btn" id="surrenderGame">投降</button>
+                </div>
+            </div>
+            
+            <!-- 底部升级按钮区域 -->
+            <div class="upgrade-buttons-row">
+                <button class="upgrade-btn" id="upgradeAttack">
+                    <span class="upgrade-btn-name">攻击力</span>
+                    <span class="level-display">Lv.<span id="attackLevel">0</span></span>
+                </button>
+                <button class="upgrade-btn" id="upgradeSpeed">
+                    <span class="upgrade-btn-name">攻速</span>
+                    <span class="level-display">Lv.<span id="speedLevel">0</span></span>
+                </button>
+                <button class="upgrade-btn" id="upgradeMoveSpeed">
+                    <span class="upgrade-btn-name">移速</span>
+                    <span class="level-display">Lv.<span id="moveSpeedLevel">0</span></span>
+                </button>
+                <button class="upgrade-btn" id="upgradeHealth">
+                    <span class="upgrade-btn-name">血量</span>
+                    <span class="level-display">Lv.<span id="healthLevel">0</span></span>
+                </button>
+                <button class="upgrade-btn" id="upgradeBase">
+                    <span class="upgrade-btn-name">基地</span>
+                    <span class="level-display">Lv.<span id="baseLevel">0</span></span>
+                </button>
+            </div>
+            
+            <!-- 桌面端面板结构 -->
+            <div class="info-panel desktop-info-panel">
                 <div class="info-row">
                     <span class="info-label">资源</span>
-                    <span class="info-value highlight" id="resources">0</span>
+                    <span class="info-value highlight" id="resources-desktop">0</span>
                 </div>
                 <div class="info-row">
                     <span class="info-label">无人机</span>
-                    <span class="info-value" id="droneCount">20</span><span class="info-max">/30</span>
+                    <span class="info-value" id="droneCount-desktop">20</span><span class="info-max">/30</span>
                 </div>
                 <div class="info-row">
                     <span class="info-label">击杀</span>
-                    <span class="info-value highlight" id="killCount">0</span>
+                    <span class="info-value highlight" id="killCount-desktop">0</span>
                 </div>
                 <div class="info-row">
                     <span class="info-label">时间</span>
-                    <span class="info-value" id="gameTime">00:00</span>
+                    <span class="info-value" id="gameTime-desktop">00:00</span>
                 </div>
             </div>
             
-            <!-- 无人机升级面板 -->
             <div class="upgrade-panel drone-upgrade-panel">
                 <div class="panel-title">无人机</div>
                 <div class="upgrade-buttons-container">
-                    <div class="upgrade-buttons-row">
-                        <button class="upgrade-btn" id="upgradeAttack">攻击力 <span class="level-display">Lv.<span id="attackLevel">0</span></span></button>
-                        <button class="upgrade-btn" id="upgradeSpeed">攻速 <span class="level-display">Lv.<span id="speedLevel">0</span></span></button>
-                    </div>
-                    <div class="upgrade-buttons-row">
-                        <button class="upgrade-btn" id="upgradeMoveSpeed">移速 <span class="level-display">Lv.<span id="moveSpeedLevel">0</span></span></button>
-                        <button class="upgrade-btn" id="upgradeHealth">血量 <span class="level-display">Lv.<span id="healthLevel">0</span></span></button>
-                    </div>
+                    <button class="upgrade-btn" id="upgradeAttack2">攻击力 <span class="level-display">Lv.<span id="attackLevel2">0</span></span></button>
+                    <button class="upgrade-btn" id="upgradeSpeed2">攻速 <span class="level-display">Lv.<span id="speedLevel2">0</span></span></button>
+                    <button class="upgrade-btn" id="upgradeMoveSpeed2">移速 <span class="level-display">Lv.<span id="moveSpeedLevel2">0</span></span></button>
+                    <button class="upgrade-btn" id="upgradeHealth2">血量 <span class="level-display">Lv.<span id="healthLevel2">0</span></span></button>
                 </div>
             </div>
             
-            <!-- 基地升级面板 -->
             <div class="upgrade-panel base-upgrade-panel">
                 <div class="panel-title">基地</div>
                 <div class="upgrade-buttons-container">
-                    <button class="upgrade-btn" id="upgradeBase">基地血量 <span class="level-display">Lv.<span id="baseLevel">0</span></span></button>
+                    <button class="upgrade-btn" id="upgradeBase2">基地血量 <span class="level-display">Lv.<span id="baseLevel2">0</span></span></button>
                 </div>
             </div>
             
-            <!-- 游戏控制面板 -->
             <div class="upgrade-panel game-control-panel">
                 <div class="upgrade-buttons-container">
-                    <button class="control-btn pause-btn" id="pauseGame">
+                    <button class="control-btn pause-btn" id="pauseGame2">
                         <span class="pause-icon">⏸️</span>
                         <span class="pause-text">暂停</span>
                     </button>
-                    <button class="control-btn surrender-btn" id="surrenderGame">
+                    <button class="control-btn surrender-btn" id="surrenderGame2">
                         <span class="surrender-icon">🏳️</span>
                         <span class="surrender-text">投降</span>
                     </button>

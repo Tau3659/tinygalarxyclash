@@ -474,6 +474,11 @@ class DroneGame {
         uiElement.style.display = 'flex';
         uiElement.classList.add('game-active');
         
+        // 等待UI渲染完成后更新安全区域
+        setTimeout(() => {
+            this.updateUISafeArea();
+        }, 100); // 给UI一点时间完成渲染
+        
         // 降低背景音乐音量（游戏开始后保持播放但音量降低）
         console.log('游戏开始，尝试降低背景音乐音量');
         if (window.audioManager) {
@@ -499,6 +504,10 @@ class DroneGame {
         window.addEventListener('resize', () => {
             if (this.gameState === 'playing') {
                 this.setFullscreenCanvas();
+                // 延迟更新安全区域，确保UI重新布局完成
+                setTimeout(() => {
+                    this.updateUISafeArea();
+                }, 100);
             }
         });
         
@@ -665,43 +674,39 @@ class DroneGame {
         const isLandscape = width > height;
         
         if (isMobile) {
-            if (isLandscape) {
-                // 移动端横屏：UI占视口高度的8%，最小60px，最大80px，强制水平排列
-                const uiHeight = Math.max(60, Math.min(80, height * 0.08));
-                this.uiSafeArea = {
-                    left: 10,
-                    right: 10,
-                    top: uiHeight + 10,  // UI高度 + 10px边距
-                    bottom: 10
-                };
-            } else if (width <= 399) {
-                // 超小屏幕竖屏：UI垂直排列，需要更多高度，最小180px，最大250px
-                const uiHeight = Math.max(180, Math.min(250, height * 0.18)); // 增加到18%
-                this.uiSafeArea = {
-                    left: 10,
-                    right: 10,
-                    top: uiHeight + 10,  // UI高度 + 10px边距
-                    bottom: 10
-                };
-            } else if (width <= 480) {
-                // 400-480px屏幕：UI水平排列，占视口高度的15%，最小100px，最大140px
-                const uiHeight = Math.max(100, Math.min(140, height * 0.15)); // 增加到15%
-                this.uiSafeArea = {
-                    left: 10,
-                    right: 10,
-                    top: uiHeight + 10,  // UI高度 + 10px边距
-                    bottom: 10
-                };
+            // 获取实际UI元素的高度
+            const uiElement = document.getElementById('ui');
+            let actualUIHeight = 0;
+            
+            if (uiElement && uiElement.offsetHeight > 0) {
+                // 如果UI元素已经渲染，使用实际高度
+                actualUIHeight = uiElement.offsetHeight;
+                console.log(`使用实际UI高度: ${actualUIHeight}px`);
             } else {
-                // 一般移动端竖屏：UI水平排列，占视口高度的15%，最小100px，最大140px
-                const uiHeight = Math.max(100, Math.min(140, height * 0.15)); // 增加到15%
-                this.uiSafeArea = {
-                    left: 10,
-                    right: 10,
-                    top: uiHeight + 10,  // UI高度 + 10px边距
-                    bottom: 10
-                };
+                // 如果UI元素还未渲染，使用预估高度
+                if (isLandscape) {
+                    // 移动端横屏：预估高度
+                    actualUIHeight = Math.max(60, Math.min(80, height * 0.08));
+                } else if (width <= 399) {
+                    // 超小屏幕竖屏：预估高度
+                    actualUIHeight = Math.max(180, Math.min(250, height * 0.18));
+                } else if (width <= 480) {
+                    // 400-480px屏幕：预估高度
+                    actualUIHeight = Math.max(100, Math.min(140, height * 0.15));
+                } else {
+                    // 一般移动端竖屏：预估高度
+                    actualUIHeight = Math.max(100, Math.min(140, height * 0.15));
+                }
+                console.log(`使用预估UI高度: ${actualUIHeight}px`);
             }
+            
+            // 设置移动端安全区域，顶部高度与UI高度完全一致
+            this.uiSafeArea = {
+                left: 10,
+                right: 10,
+                top: actualUIHeight, // 直接使用UI高度，不添加额外边距
+                bottom: 10
+            };
         } else {
             // 桌面端：UI在左侧，根据窗口大小调整
             let uiWidth;
@@ -738,7 +743,37 @@ class DroneGame {
         }
         
         console.log(`画布设置为全屏: ${width}x${height} (${isMobile ? '移动端' : '桌面端'}, ${isLandscape ? '横屏' : '竖屏'})`);
+        console.log(`UI安全区域高度: ${this.uiSafeArea.top}px`);
         console.log(`游戏安全区域: ${this.gameSafeArea.width}x${this.gameSafeArea.height} at (${this.gameSafeArea.x}, ${this.gameSafeArea.y})`);
+    }
+    
+    // 更新UI安全区域（在UI渲染完成后调用）
+    updateUISafeArea() {
+        const width = window.innerWidth;
+        const height = window.innerHeight;
+        const isMobile = width <= 768;
+        
+        if (isMobile) {
+            // 获取实际UI元素的高度
+            const uiElement = document.getElementById('ui');
+            if (uiElement && uiElement.offsetHeight > 0) {
+                const actualUIHeight = uiElement.offsetHeight;
+                
+                // 更新安全区域
+                this.uiSafeArea.top = actualUIHeight;
+                
+                // 重新计算游戏安全区域
+                this.gameSafeArea = {
+                    x: this.uiSafeArea.left,
+                    y: this.uiSafeArea.top,
+                    width: width - this.uiSafeArea.left - this.uiSafeArea.right,
+                    height: height - this.uiSafeArea.top - this.uiSafeArea.bottom
+                };
+                
+                console.log(`UI安全区域已更新，实际UI高度: ${actualUIHeight}px`);
+                console.log(`更新后的游戏安全区域: ${this.gameSafeArea.width}x${this.gameSafeArea.height} at (${this.gameSafeArea.x}, ${this.gameSafeArea.y})`);
+            }
+        }
     }
     
     initGame() {
@@ -791,7 +826,10 @@ class DroneGame {
         
         // 获取游戏安全区域
         const safeArea = this.gameSafeArea;
-        const margin = 100; // 基地距离边界的最小距离
+        
+        // 根据设备类型调整边距
+        const isMobile = this.canvas.width <= 768;
+        const margin = isMobile ? 60 : 100; // 移动端使用更小的边距，让基地更贴近边缘
         
         if (this.gameMode === '1v1') {
             // 对角线出生位置：左上角 vs 右下角（在安全区域内）
@@ -813,15 +851,26 @@ class DroneGame {
             x = index < 2 ? leftX : rightX;
             y = index % 2 === 0 ? topY : bottomY;
             team = Math.floor(index / 2);
-        } else { // ffa
-            // 三角形分布（在安全区域内）
-            const centerX = safeArea.x + safeArea.width / 2;
-            const centerY = safeArea.y + safeArea.height / 2;
-            const radius = Math.min(safeArea.width, safeArea.height) / 2 - margin;
-            const angles = [0, 2.094, 4.189]; // 120度间隔
-            
-            x = centerX + Math.cos(angles[index]) * radius;
-            y = centerY + Math.sin(angles[index]) * radius;
+        } else { // ffa - 混战模式
+            if (isMobile) {
+                // 移动端：使用更分散的三角形布局
+                const centerX = safeArea.x + safeArea.width / 2;
+                const centerY = safeArea.y + safeArea.height / 2;
+                const radius = Math.min(safeArea.width, safeArea.height) / 2.2 - margin; // 增大半径，更分散
+                const angles = [-1.571, 1.047, 3.665]; // 调整角度：顶部、右下、左下，更均匀分布
+                
+                x = centerX + Math.cos(angles[index]) * radius;
+                y = centerY + Math.sin(angles[index]) * radius;
+            } else {
+                // 桌面端：保持原有逻辑
+                const centerX = safeArea.x + safeArea.width / 2;
+                const centerY = safeArea.y + safeArea.height / 2;
+                const radius = Math.min(safeArea.width, safeArea.height) / 2 - margin;
+                const angles = [0, 2.094, 4.189]; // 120度间隔
+                
+                x = centerX + Math.cos(angles[index]) * radius;
+                y = centerY + Math.sin(angles[index]) * radius;
+            }
             team = index;
         }
         
@@ -976,40 +1025,84 @@ class DroneGame {
         
         // 获取游戏安全区域
         const safeArea = this.gameSafeArea;
-        const margin = 80; // 资源距离边界和基地的最小距离
+        const isMobile = this.canvas.width <= 768;
+        
+        // 根据设备类型调整资源分布
+        const margin = isMobile ? 60 : 80; // 移动端使用更小的边距
+        const minDistanceToBase = isMobile ? 150 : 200; // 移动端减小与基地的最小距离
+        const minDistanceBetweenDebris = isMobile ? 120 : 150; // 移动端资源间最小距离
         
         for (let i = 0; i < debrisCount; i++) {
             let x, y;
             let validPosition = false;
             let attempts = 0;
             
-            while (!validPosition && attempts < 50) {
-                // 在安全区域内随机生成位置
-                x = safeArea.x + margin + Math.random() * (safeArea.width - 2 * margin);
-                y = safeArea.y + margin + Math.random() * (safeArea.height - 2 * margin);
-                
-                // 检查是否距离所有玩家基地足够远
-                let minDistanceToBase = Infinity;
-                for (const player of this.players) {
-                    const distToBase = Math.sqrt((x - player.base.x) ** 2 + (y - player.base.y) ** 2);
-                    minDistanceToBase = Math.min(minDistanceToBase, distToBase);
+            while (!validPosition && attempts < 100) { // 增加尝试次数
+                if (isMobile && debrisCount === 5) {
+                    // 移动端：使用预定义的分散位置，避免重叠
+                    const positions = [
+                        // 五个相对分散的位置
+                        { ratioX: 0.2, ratioY: 0.3 }, // 左上
+                        { ratioX: 0.8, ratioY: 0.2 }, // 右上
+                        { ratioX: 0.15, ratioY: 0.7 }, // 左下
+                        { ratioX: 0.85, ratioY: 0.8 }, // 右下
+                        { ratioX: 0.5, ratioY: 0.6 }   // 中下
+                    ];
+                    
+                    const pos = positions[i];
+                    x = safeArea.x + margin + pos.ratioX * (safeArea.width - 2 * margin);
+                    y = safeArea.y + margin + pos.ratioY * (safeArea.height - 2 * margin);
+                } else {
+                    // 桌面端或其他情况：随机生成
+                    x = safeArea.x + margin + Math.random() * (safeArea.width - 2 * margin);
+                    y = safeArea.y + margin + Math.random() * (safeArea.height - 2 * margin);
                 }
                 
-                // 确保资源距离任何基地都至少200像素
-                if (minDistanceToBase >= 200) {
+                // 检查是否距离所有玩家基地足够远
+                let minDistanceToBase_actual = Infinity;
+                for (const player of this.players) {
+                    const distToBase = Math.sqrt((x - player.base.x) ** 2 + (y - player.base.y) ** 2);
+                    minDistanceToBase_actual = Math.min(minDistanceToBase_actual, distToBase);
+                }
+                
+                // 检查是否与其他资源距离足够远
+                let minDistanceToOtherDebris = Infinity;
+                for (const debris of this.debris) {
+                    const distToDebris = Math.sqrt((x - debris.x) ** 2 + (y - debris.y) ** 2);
+                    minDistanceToOtherDebris = Math.min(minDistanceToOtherDebris, distToDebris);
+                }
+                
+                // 验证位置是否合适
+                if (minDistanceToBase_actual >= minDistanceToBase && 
+                    (this.debris.length === 0 || minDistanceToOtherDebris >= minDistanceBetweenDebris)) {
                     validPosition = true;
                 }
                 attempts++;
             }
             
-            // 如果找不到合适位置，使用安全区域中心附近
+            // 如果找不到合适位置，使用备用策略
             if (!validPosition) {
-                const centerX = safeArea.x + safeArea.width / 2;
-                const centerY = safeArea.y + safeArea.height / 2;
-                const offsetRange = Math.min(safeArea.width, safeArea.height) / 4;
-                
-                x = centerX + (Math.random() - 0.5) * offsetRange;
-                y = centerY + (Math.random() - 0.5) * offsetRange;
+                if (isMobile) {
+                    // 移动端：使用固定的安全位置
+                    const fallbackPositions = [
+                        { x: safeArea.x + safeArea.width * 0.25, y: safeArea.y + safeArea.height * 0.25 },
+                        { x: safeArea.x + safeArea.width * 0.75, y: safeArea.y + safeArea.height * 0.25 },
+                        { x: safeArea.x + safeArea.width * 0.25, y: safeArea.y + safeArea.height * 0.75 },
+                        { x: safeArea.x + safeArea.width * 0.75, y: safeArea.y + safeArea.height * 0.75 },
+                        { x: safeArea.x + safeArea.width * 0.5, y: safeArea.y + safeArea.height * 0.6 }
+                    ];
+                    const fallback = fallbackPositions[i % fallbackPositions.length];
+                    x = fallback.x;
+                    y = fallback.y;
+                } else {
+                    // 桌面端：使用安全区域中心附近
+                    const centerX = safeArea.x + safeArea.width / 2;
+                    const centerY = safeArea.y + safeArea.height / 2;
+                    const offsetRange = Math.min(safeArea.width, safeArea.height) / 4;
+                    
+                    x = centerX + (Math.random() - 0.5) * offsetRange;
+                    y = centerY + (Math.random() - 0.5) * offsetRange;
+                }
             }
             
             // 更大的资源块
@@ -1082,7 +1175,17 @@ class DroneGame {
             
             // 检查是否点击了可攻击目标（敌方单位或资源）
             let clickedTarget = null;
-            const clickRadius = window.innerWidth <= 768 ? 25 : 15; // 移动端增大点击区域
+            // 重用之前声明的 isMobile 变量
+            
+            // 根据设备类型调整点击区域
+            let clickRadius;
+            if (isMobile) {
+                // 移动端：使用更小的点击区域，与视觉大小匹配
+                clickRadius = 15; // 减小移动端点击区域
+            } else {
+                // 桌面端：保持原有大小
+                clickRadius = 15;
+            }
             
             // 检查是否点击了敌方无人机或基地
             this.players.forEach(player => {
@@ -1091,7 +1194,17 @@ class DroneGame {
                 // 检查基地 - 只有血量大于0的基地才能被选中
                 if (player.base.health > 0) {
                     const baseDist = Math.sqrt((x - player.base.x) ** 2 + (y - player.base.y) ** 2);
-                    if (baseDist < this.scaledValues.baseSize + clickRadius) {
+                    let baseClickRadius;
+                    
+                    if (isMobile) {
+                        // 移动端：热区范围 = 基地视觉大小 + 小缓冲区
+                        baseClickRadius = this.scaledValues.baseSize + 8; // 只增加8px缓冲区
+                    } else {
+                        // 桌面端：保持原有逻辑
+                        baseClickRadius = this.scaledValues.baseSize + clickRadius;
+                    }
+                    
+                    if (baseDist < baseClickRadius) {
                         clickedTarget = player.base;
                     }
                 }
@@ -1100,7 +1213,18 @@ class DroneGame {
                 player.drones.forEach(drone => {
                     if (drone.health > 0) {
                         const droneDist = Math.sqrt((x - drone.x) ** 2 + (y - drone.y) ** 2);
-                        if (droneDist < drone.size + clickRadius) {
+                        let droneClickRadius;
+                        
+                        if (isMobile) {
+                            // 移动端：热区范围 = 无人机渲染大小 + 小缓冲区
+                            const droneRenderSize = drone.size * 1.4; // 与渲染大小一致
+                            droneClickRadius = droneRenderSize + 5; // 只增加5px缓冲区
+                        } else {
+                            // 桌面端：保持原有逻辑
+                            droneClickRadius = drone.size + clickRadius;
+                        }
+                        
+                        if (droneDist < droneClickRadius) {
                             clickedTarget = drone;
                         }
                     }
@@ -1111,7 +1235,17 @@ class DroneGame {
             if (!clickedTarget) {
                 this.debris.forEach(debris => {
                     const debrisDist = Math.sqrt((x - debris.x) ** 2 + (y - debris.y) ** 2);
-                    if (debrisDist < debris.size + clickRadius) {
+                    let debrisClickRadius;
+                    
+                    if (isMobile) {
+                        // 移动端：热区范围 = 资源视觉大小 + 小缓冲区
+                        debrisClickRadius = debris.size + 6; // 只增加6px缓冲区
+                    } else {
+                        // 桌面端：保持原有逻辑
+                        debrisClickRadius = debris.size + clickRadius;
+                    }
+                    
+                    if (debrisDist < debrisClickRadius) {
                         clickedTarget = debris;
                     }
                 });
@@ -1209,25 +1343,38 @@ class DroneGame {
         // 升级按钮事件（支持触摸）
         const addButtonEvents = (id, attribute) => {
             const button = document.getElementById(id);
-            button.addEventListener('click', () => {
-                this.upgradeAttribute(attribute);
-            });
-            button.addEventListener('touchend', (e) => {
-                e.preventDefault();
-                this.upgradeAttribute(attribute);
-            });
+            if (button) {
+                button.addEventListener('click', () => {
+                    this.upgradeAttribute(attribute);
+                });
+                button.addEventListener('touchend', (e) => {
+                    e.preventDefault();
+                    this.upgradeAttribute(attribute);
+                });
+            }
         };
         
+        // 移动端按钮
         addButtonEvents('upgradeAttack', 'attack');
         addButtonEvents('upgradeSpeed', 'attackSpeed');
         addButtonEvents('upgradeMoveSpeed', 'moveSpeed');
         addButtonEvents('upgradeHealth', 'health');
         addButtonEvents('upgradeBase', 'baseHealth');
         
-        // 游戏控制按钮事件
+        // 桌面端按钮
+        addButtonEvents('upgradeAttack2', 'attack');
+        addButtonEvents('upgradeSpeed2', 'attackSpeed');
+        addButtonEvents('upgradeMoveSpeed2', 'moveSpeed');
+        addButtonEvents('upgradeHealth2', 'health');
+        addButtonEvents('upgradeBase2', 'baseHealth');
+        
+        // 游戏控制按钮事件（移动端和桌面端）
         const pauseBtn = document.getElementById('pauseGame');
         const surrenderBtn = document.getElementById('surrenderGame');
+        const pauseBtn2 = document.getElementById('pauseGame2');
+        const surrenderBtn2 = document.getElementById('surrenderGame2');
         
+        // 移动端暂停按钮
         if (pauseBtn) {
             pauseBtn.addEventListener('click', () => {
                 this.togglePause();
@@ -1238,12 +1385,27 @@ class DroneGame {
             });
         }
         
+        // 桌面端暂停按钮
+        if (pauseBtn2) {
+            pauseBtn2.addEventListener('click', () => {
+                this.togglePause();
+            });
+        }
+        
+        // 移动端投降按钮
         if (surrenderBtn) {
             surrenderBtn.addEventListener('click', () => {
                 this.surrenderGame();
             });
             surrenderBtn.addEventListener('touchend', (e) => {
                 e.preventDefault();
+                this.surrenderGame();
+            });
+        }
+        
+        // 桌面端投降按钮
+        if (surrenderBtn2) {
+            surrenderBtn2.addEventListener('click', () => {
                 this.surrenderGame();
             });
         }
@@ -2911,6 +3073,15 @@ class DroneGame {
     renderEnhancedDrone(drone, color) {
         const ctx = this.ctx;
         
+        // 根据设备类型调整无人机渲染大小
+        const isMobile = this.canvas.width <= 768;
+        let renderSize = drone.size;
+        
+        if (isMobile) {
+            // 移动端：增大渲染尺寸，但保持碰撞检测不变
+            renderSize = drone.size * 1.4; // 增大40%的视觉效果
+        }
+        
         // 绘制无人机主体
         ctx.fillStyle = color;
         ctx.strokeStyle = '#ffffff';
@@ -2921,7 +3092,7 @@ class DroneGame {
         ctx.shadowBlur = 8;
         
         ctx.beginPath();
-        ctx.arc(drone.x, drone.y, drone.size, 0, Math.PI * 2);
+        ctx.arc(drone.x, drone.y, renderSize, 0, Math.PI * 2);
         ctx.fill();
         ctx.stroke();
         
@@ -2929,25 +3100,26 @@ class DroneGame {
         ctx.shadowBlur = 0;
         
         // 绘制方向指示器（机头朝向）
-        this.renderDroneDirection(drone, color);
+        this.renderDroneDirection(drone, color, renderSize);
         
         // 绘制无人机内部细节
         ctx.fillStyle = '#ffffff';
         ctx.beginPath();
-        ctx.arc(drone.x, drone.y, drone.size * 0.3, 0, Math.PI * 2);
+        ctx.arc(drone.x, drone.y, renderSize * 0.3, 0, Math.PI * 2);
         ctx.fill();
         
         // 绘制护盾效果（如果在无敌时间内）
         if (drone.invulnerable) {
-            this.renderShieldEffect(drone, color);
+            this.renderShieldEffect(drone, color, renderSize);
         }
     }
     
     
     // 渲染护盾效果
-    renderShieldEffect(drone, color) {
+    renderShieldEffect(drone, color, renderSize = null) {
         const ctx = this.ctx;
         const time = Date.now() * 0.003;
+        const effectSize = renderSize || drone.size; // 使用传入的渲染大小或默认大小
         
         // 计算护盾透明度（根据剩余无敌时间）
         const remainingTime = drone.invulnerableTime - (Date.now() - drone.birthTime);
@@ -2959,11 +3131,11 @@ class DroneGame {
         const alpha = Math.max(0.1, Math.min(0.8, pulseAlpha));
         
         // 护盾半径
-        const shieldRadius = drone.size + 4 + Math.sin(time * 4) * 2;
+        const shieldRadius = effectSize + 4 + Math.sin(time * 4) * 2;
         
         // 创建护盾渐变
         const shieldGradient = ctx.createRadialGradient(
-            drone.x, drone.y, drone.size,
+            drone.x, drone.y, effectSize,
             drone.x, drone.y, shieldRadius
         );
         shieldGradient.addColorStop(0, 'transparent');
@@ -2998,12 +3170,13 @@ class DroneGame {
     }
     
     // 渲染无人机方向指示器
-    renderDroneDirection(drone, color) {
+    renderDroneDirection(drone, color, renderSize = null) {
         const ctx = this.ctx;
+        const effectSize = renderSize || drone.size; // 使用传入的渲染大小或默认大小
         
         // 计算方向指示器的位置
-        const directionLength = drone.size * 0.8; // 指示器长度
-        const directionStartDistance = drone.size * 0.6; // 从无人机中心的起始距离
+        const directionLength = effectSize * 0.8; // 指示器长度
+        const directionStartDistance = effectSize * 0.6; // 从无人机中心的起始距离
         
         // 计算起始点和结束点
         const startX = drone.x + Math.cos(drone.facing) * directionStartDistance;
@@ -3146,11 +3319,24 @@ class DroneGame {
         // 绘制玩家集结点 - 使用缩放后的尺寸，确保圆形不变形
         const humanPlayer = this.players[0];
         if (humanPlayer && humanPlayer.rallyPoint) {
-            // 计算缩放后的集结点大小，确保圆形显示
-            const baseRadius = this.scaledValues.droneSize * 1.2; // 稍微减小基础半径
-            const rallyRadius = Math.max(8, baseRadius); // 确保最小可见大小
-            const rallyAnimRadius = rallyRadius * 1.4; // 减小动画外圆比例
-            const rallyLineWidth = Math.max(1, rallyRadius / 6); // 调整线宽比例
+            // 根据设备类型调整集结点大小
+            const isMobile = this.canvas.width <= 768;
+            let baseRadius, rallyRadius, rallyAnimRadius, rallyLineWidth;
+            
+            if (isMobile) {
+                // 移动端：与无人机渲染大小一致，避免误操作
+                const droneRenderSize = this.scaledValues.droneSize * 1.4; // 与无人机渲染大小相同
+                baseRadius = droneRenderSize;
+                rallyRadius = Math.max(12, baseRadius); // 最小12px，确保可见性
+                rallyAnimRadius = rallyRadius * 1.3; // 适中的动画外圆
+                rallyLineWidth = Math.max(1.5, rallyRadius / 8); // 适中的线条粗细
+            } else {
+                // 桌面端：保持原有大小
+                baseRadius = this.scaledValues.droneSize * 1.2;
+                rallyRadius = Math.max(8, baseRadius);
+                rallyAnimRadius = rallyRadius * 1.4;
+                rallyLineWidth = Math.max(1, rallyRadius / 6);
+            }
             
             // 主集结点圆圈 - 确保圆形
             this.ctx.strokeStyle = humanPlayer.color;
@@ -3199,25 +3385,6 @@ class DroneGame {
             
             // 重置线条样式
             this.ctx.setLineDash([]);
-        }
-        
-        // 显示资源检查提示（仅在有资源时显示）
-        if (this.debris.length > 0 && this.gameState === 'playing') {
-            this.ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
-            this.ctx.font = '12px Arial';
-            this.ctx.textAlign = 'left';
-            const tipText = '提示：双击资源查看详细属性';
-            const tipX = 10;
-            const tipY = this.canvas.height - 20;
-            
-            // 绘制半透明背景
-            const textWidth = this.ctx.measureText(tipText).width;
-            this.ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
-            this.ctx.fillRect(tipX - 5, tipY - 15, textWidth + 10, 18);
-            
-            // 绘制提示文字
-            this.ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
-            this.ctx.fillText(tipText, tipX, tipY);
         }
         
         // 绘制游戏结束信息
@@ -3313,36 +3480,58 @@ class DroneGame {
         this.ctx.fillText('点击继续按钮恢复游戏', this.canvas.width / 2, this.canvas.height / 2 + 30);
     }
     
+    // 辅助函数：更新多个相同功能的元素
+    updateMultipleElements(ids, value) {
+        ids.forEach(id => {
+            const element = document.getElementById(id);
+            if (element) {
+                element.textContent = value;
+            }
+        });
+    }
+
     updateUI() {
         if (this.gameState !== 'playing') return;
         
         const player = this.players[0];
         
-        document.getElementById('resources').textContent = player.resources;
-        document.getElementById('droneCount').textContent = player.drones.length;
-        document.getElementById('killCount').textContent = player.killCount || 0;
+        // 更新资源显示（移动端和桌面端）
+        this.updateMultipleElements(['resources', 'resources-desktop'], player.resources);
+        
+        // 更新无人机数量显示
+        this.updateMultipleElements(['droneCount', 'droneCount-desktop'], player.drones.length);
+        
+        // 更新击杀数显示
+        this.updateMultipleElements(['killCount', 'killCount-desktop'], player.killCount || 0);
         
         // 更新游戏时间
         const gameTime = Math.floor((Date.now() - this.gameStartTime) / 1000);
         const minutes = Math.floor(gameTime / 60);
         const seconds = gameTime % 60;
-        document.getElementById('gameTime').textContent = 
-            `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        const timeString = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        this.updateMultipleElements(['gameTime', 'gameTime-desktop'], timeString);
         
-        // 更新升级等级显示
+        // 更新升级等级显示（移动端和桌面端）
         const upgrades = player.upgrades;
-        document.getElementById('attackLevel').textContent = upgrades.attack;
-        document.getElementById('speedLevel').textContent = upgrades.attackSpeed;
-        document.getElementById('moveSpeedLevel').textContent = upgrades.moveSpeed;
-        document.getElementById('healthLevel').textContent = upgrades.health;
-        document.getElementById('baseLevel').textContent = upgrades.baseHealth;
+        this.updateMultipleElements(['attackLevel', 'attackLevel2'], upgrades.attack);
+        this.updateMultipleElements(['speedLevel', 'speedLevel2'], upgrades.attackSpeed);
+        this.updateMultipleElements(['moveSpeedLevel', 'moveSpeedLevel2'], upgrades.moveSpeed);
+        this.updateMultipleElements(['healthLevel', 'healthLevel2'], upgrades.health);
+        this.updateMultipleElements(['baseLevel', 'baseLevel2'], upgrades.baseHealth);
         
-        // 更新升级按钮状态（根据新的资源消耗规则）
+        // 更新升级按钮状态（移动端和桌面端）
         this.updateUpgradeButtonState('upgradeAttack', 'attack', player);
         this.updateUpgradeButtonState('upgradeSpeed', 'attackSpeed', player);
         this.updateUpgradeButtonState('upgradeMoveSpeed', 'moveSpeed', player);
         this.updateUpgradeButtonState('upgradeHealth', 'health', player);
         this.updateUpgradeButtonState('upgradeBase', 'baseHealth', player);
+        
+        // 桌面端按钮状态更新
+        this.updateUpgradeButtonState('upgradeAttack2', 'attack', player);
+        this.updateUpgradeButtonState('upgradeSpeed2', 'attackSpeed', player);
+        this.updateUpgradeButtonState('upgradeMoveSpeed2', 'moveSpeed', player);
+        this.updateUpgradeButtonState('upgradeHealth2', 'health', player);
+        this.updateUpgradeButtonState('upgradeBase2', 'baseHealth', player);
     }
     
     // 更新单个升级按钮的状态（不显示资源数量）
@@ -4329,8 +4518,18 @@ class Drone {
         const myPlayer = game.players[this.playerId];
         if (!myPlayer) return 25;
         
-        // 基础到达范围
-        const baseRange = Math.max(this.scaledValues.droneRallyRange, 25);
+        // 根据设备类型调整基础到达范围
+        const isMobile = game.canvas.width <= 768;
+        let baseRange;
+        
+        if (isMobile) {
+            // 移动端：使用更小的到达范围，与集结点视觉大小匹配
+            const droneRenderSize = this.scaledValues.droneSize * 1.4; // 与集结点大小一致
+            baseRange = Math.max(droneRenderSize * 0.8, 15); // 稍小于集结点半径
+        } else {
+            // 桌面端：保持原有逻辑
+            baseRange = Math.max(this.scaledValues.droneRallyRange, 25);
+        }
         
         // 计算集结点周围的无人机密度
         const densityCheckRadius = 80; // 检查80像素范围内的密度
@@ -4370,8 +4569,8 @@ class Drone {
             dynamicRange += layerBonus;
         }
         
-        // 限制最大范围，避免过度扩散
-        const maxRange = 100;
+        // 根据设备类型限制最大范围
+        const maxRange = isMobile ? 80 : 100; // 移动端限制更小的最大范围
         dynamicRange = Math.min(dynamicRange, maxRange);
         
         return dynamicRange;
